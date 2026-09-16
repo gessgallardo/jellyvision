@@ -23,14 +23,14 @@ public class ChannelSource
     public string Label { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets the genres a <see cref="SourceKind.Filter"/> source matches.
+    /// Gets or sets the genres a <see cref="SourceKind.Filter"/> source matches.
     /// </summary>
-    public IList<string> Genres { get; } = new List<string>();
+    public IList<string> Genres { get; set; } = new List<string>();
 
     /// <summary>
-    /// Gets the tags a <see cref="SourceKind.Filter"/> source matches.
+    /// Gets or sets the tags a <see cref="SourceKind.Filter"/> source matches.
     /// </summary>
-    public IList<string> Tags { get; } = new List<string>();
+    public IList<string> Tags { get; set; } = new List<string>();
 
     /// <summary>
     /// Gets or sets a value indicating whether episodes are included for filter sources.

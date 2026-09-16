@@ -8,6 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <!-- CA2227: plugin configuration collections must be settable so the
+         serializer can populate them from POST /Plugins/{id}/Configuration. -->
+    <NoWarn>$(NoWarn);CA2227</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

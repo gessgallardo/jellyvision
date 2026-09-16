@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.1.1.0",
+        "changelog": "Fix: plugin configuration collections were not deserialised on save.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.1.1.0/jellyvision_0.1.1.0.zip",
+        "checksum": "6607f5e29710afd1159bf5db9cfc8791",
+        "timestamp": "2026-09-16T21:08:30Z"
+      },
+      {
         "version": "0.1.0.0",
         "changelog": "Deterministic schedule engine and REST API.",
         "targetAbi": "10.11.0.0",

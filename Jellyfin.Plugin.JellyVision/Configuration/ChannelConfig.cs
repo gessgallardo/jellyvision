@@ -46,7 +46,7 @@ public class ChannelConfig
     public DateTime AnchorUtc { get; set; } = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>
-    /// Gets the sources feeding this channel.
+    /// Gets or sets the sources feeding this channel.
     /// </summary>
-    public IList<ChannelSource> Sources { get; } = new List<ChannelSource>();
+    public IList<ChannelSource> Sources { get; set; } = new List<ChannelSource>();
 }
