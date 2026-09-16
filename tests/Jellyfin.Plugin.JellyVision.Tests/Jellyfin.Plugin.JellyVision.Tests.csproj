@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Jellyfin.Plugin.JellyVision\Jellyfin.Plugin.JellyVision.csproj" />
   </ItemGroup>
 
