@@ -21,6 +21,17 @@
                     <div class="fieldDescription">How many hours of schedule to generate per request.</div>
                 </div>
 
+                <div class="inputContainer">
+                    <label class="inputLabel" for="PublicBaseUrl">Public base URL</label>
+                    <input id="PublicBaseUrl" name="PublicBaseUrl" type="text" is="emby-input"
+                           placeholder="https://jellyfin.example.com/jellyfin" />
+                    <div class="fieldDescription">
+                        Optional. The address clients use to reach this server. Set this if you
+                        run behind a reverse proxy that terminates TLS, otherwise the playlist
+                        may advertise http:// stream URLs.
+                    </div>
+                </div>
+
                 <div>
                     <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                         <span>Save</span>
@@ -30,6 +41,12 @@
 
             <h3>Channels</h3>
             <div id="JellyVisionChannels"></div>
+
+            <h3>Live TV setup</h3>
+            <p>Dashboard &rarr; Live TV &rarr; Add tuner device &rarr; <strong>M3U Tuner</strong>:</p>
+            <p><code id="JellyVisionM3u"></code></p>
+            <p>Then Add guide provider &rarr; <strong>XMLTV</strong>:</p>
+            <p><code id="JellyVisionEpg"></code></p>
         </div>
     </div>
 
@@ -40,8 +57,20 @@
             function load(page) {
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     page.querySelector('#GuideHours').value = config.GuideHours || 24;
+                    page.querySelector('#PublicBaseUrl').value = config.PublicBaseUrl || '';
                     renderChannels(page, config.Channels || []);
+                    renderUrls(page, config);
                 });
+            }
+
+            function renderUrls(page, config) {
+                var base = (config.PublicBaseUrl || '').trim() ||
+                    (window.location.origin + (ApiClient.serverAddress().split(window.location.origin)[1] || ''));
+                base = base.replace(/\/$/, '');
+                page.querySelector('#JellyVisionM3u').textContent =
+                    base + '/JellyVision/iptv/channels.m3u';
+                page.querySelector('#JellyVisionEpg').textContent =
+                    base + '/JellyVision/iptv/epg.xml';
             }
 
             function renderChannels(page, channels) {
@@ -66,6 +95,7 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                         config.GuideHours = parseInt(page.querySelector('#GuideHours').value, 10);
+                        config.PublicBaseUrl = page.querySelector('#PublicBaseUrl').value.trim();
                         ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
                         });

@@ -47,6 +47,35 @@ public class IptvController : ControllerBase
         => Plugin.Instance?.Configuration ?? new PluginConfiguration();
 
     /// <summary>
+    /// Resolves the base URL to advertise in the playlist: the configured
+    /// override when set, otherwise the incoming request, honouring
+    /// X-Forwarded-Proto so a TLS-terminating proxy does not downgrade the
+    /// advertised stream URLs to http.
+    /// </summary>
+    private string ResolveBaseUrl()
+    {
+        var configured = Config.PublicBaseUrl;
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured.TrimEnd('/');
+        }
+
+        var scheme = Request.Scheme;
+        if (Request.Headers.TryGetValue("X-Forwarded-Proto", out var forwarded))
+        {
+            var value = forwarded.ToString();
+            if (!string.IsNullOrEmpty(value))
+            {
+                scheme = value.Split(',')[0].Trim();
+            }
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{scheme}://{Request.Host}{Request.PathBase}");
+    }
+
+    /// <summary>
     /// Gets the M3U playlist of JellyVision channels.
     /// </summary>
     /// <returns>The playlist.</returns>
@@ -55,11 +84,7 @@ public class IptvController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult GetPlaylist()
     {
-        var baseUrl = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{Request.Scheme}://{Request.Host}{Request.PathBase}");
-
-        var body = IptvDocuments.BuildM3u(Config.Channels, baseUrl);
+        var body = IptvDocuments.BuildM3u(Config.Channels, ResolveBaseUrl());
         return Content(body, "application/x-mpegurl");
     }
 

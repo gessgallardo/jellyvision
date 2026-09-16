@@ -136,6 +136,29 @@ public class IptvDocumentsTests
     }
 
     [Fact]
+    public void Xmltv_DeclaresUtf8NotUtf16()
+    {
+        // XmlWriter takes the declared encoding from its underlying writer, and
+        // a plain StringWriter reports UTF-16. The response is served as UTF-8
+        // bytes, so declaring utf-16 makes strict XMLTV parsers reject the
+        // document outright - as Python's ElementTree did against the live server.
+        var channel = Channel();
+        var slots = ScheduleEngine.GetGuide(
+            Items(), ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromHours(1), 1);
+
+        var xml = IptvDocuments.BuildXmltv([(channel, slots)]);
+
+        Assert.Contains("encoding=\"utf-8\"", xml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("utf-16", xml, StringComparison.OrdinalIgnoreCase);
+
+        // And it must survive a round trip through real UTF-8 bytes.
+        var bytes = System.Text.Encoding.UTF8.GetBytes(xml);
+        using var stream = new System.IO.MemoryStream(bytes);
+        var parsed = XDocument.Load(stream);
+        Assert.Equal("tv", parsed.Root!.Name.LocalName);
+    }
+
+    [Fact]
     public void Xmltv_EmptyChannelListStillParses()
     {
         var doc = XDocument.Parse(IptvDocuments.BuildXmltv([]));

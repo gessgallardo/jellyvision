@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Xml;
 using Jellyfin.Plugin.JellyVision.Configuration;
@@ -64,7 +65,8 @@ public static class IptvDocuments
         };
 
         var sb = new StringBuilder();
-        using (var writer = XmlWriter.Create(sb, settings))
+        using (var stringWriter = new Utf8StringWriter(sb))
+        using (var writer = XmlWriter.Create(stringWriter, settings))
         {
             writer.WriteStartDocument();
             writer.WriteStartElement("tv");
@@ -135,4 +137,23 @@ public static class IptvDocuments
 
     private static string Escape(string value)
         => value.Replace("\"", "'", StringComparison.Ordinal);
+
+    /// <summary>
+    /// A <see cref="StringWriter"/> that reports UTF-8.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="XmlWriter"/> takes the encoding for the XML declaration from
+    /// the writer, and a plain <see cref="StringWriter"/> reports UTF-16. That
+    /// produces <c>encoding="utf-16"</c> on a response served as UTF-8 bytes,
+    /// which strict XMLTV parsers reject outright.
+    /// </remarks>
+    private sealed class Utf8StringWriter : StringWriter
+    {
+        public Utf8StringWriter(StringBuilder sb)
+            : base(sb, CultureInfo.InvariantCulture)
+        {
+        }
+
+        public override Encoding Encoding => Encoding.UTF8;
+    }
 }
