@@ -4,8 +4,21 @@ A Jellyfin plugin that turns opted-in series and movies into always-on,
 cable-style channels — one episode at a time, on a schedule, like TV used
 to work.
 
-Status: **early scaffold.** The schedule engine and its REST API work and
-are covered by tests. There is no client delivery yet (see Roadmap).
+Status: **working engine, no client delivery yet.** Installed and verified
+running on a live Jellyfin 10.11.9 server; the schedule engine and REST API
+are covered by 22 tests. See Roadmap for what's missing.
+
+## Install
+
+Dashboard -> Plugins -> Repositories -> Add:
+
+```
+https://raw.githubusercontent.com/gessgallardo/jellyvision/main/manifest.json
+```
+
+Then Catalogue -> JellyVision -> Install, and restart the server.
+(`raw.githubusercontent.com` caches for ~3 minutes, so a freshly published
+version takes a moment to appear.)
 
 ## Why
 
@@ -70,19 +83,47 @@ Copy `bin/Release/net9.0/Jellyfin.Plugin.JellyVision.dll` into
 
 Targets Jellyfin ABI 10.11.0.0 / net9.0.
 
+## Releasing
+
+`scripts/package.py` builds Release, zips the dll, computes the MD5 the
+manifest requires, and updates `manifest.json`:
+
+```bash
+python3 scripts/package.py --version 0.1.3.0 \
+  --base-url https://github.com/gessgallardo/jellyvision/releases/download/v0.1.3.0
+git commit -am "..." && git push
+gh release create v0.1.3.0 dist/jellyvision_0.1.3.0.zip
+```
+
+## Hard-won constraints
+
+Two runtime traps that unit tests alone will not catch - both are now
+pinned by tests:
+
+- **Jellyfin persists plugin config with `XmlSerializer`**, which throws on
+  interface-typed (`IList<T>`) and read-only collections. Configuration
+  collections must be concrete, settable `List<T>`, or every endpoint that
+  reads configuration returns 500. `PluginConfigurationSerializationTests`
+  round-trips the real config to catch this at build time.
+- **The guide must be derived from the cycle boundary**, not from the
+  current programme's start time, or its first entry reports the wrong item
+  for the right time slot - exactly the guide/stream drift the design
+  exists to prevent.
+
 ## Roadmap
 
 1. ~~Deterministic schedule engine + tests~~
 2. ~~REST API~~
-3. Channel editor UI in the plugin config page (pick series/movies/collections)
-4. Delivery — pick one or both:
+3. ~~Plugin repository packaging + install on a live server~~
+4. Channel editor UI in the plugin config page (pick series/movies/collections)
+5. Delivery — pick one or both:
    - **Web client**: injected JS that starts normal Jellyfin playback at the
      computed offset and chains to the next item. No ffmpeg, keeps direct
      play, subtitles and watch state. Web/desktop only.
    - **Live TV tuner**: `channels.m3u` + `epg.xml` + an MPEG-TS stream, added
      as an M3U tuner. Works on every client including TV apps, but needs an
      ffmpeg process per stream (concat + full re-encode + `-output_ts_offset`).
-5. Filler: bumpers, idents, fake commercials between programmes.
-6. Dayparting: different sources by time of day.
+6. Filler: bumpers, idents, fake commercials between programmes.
+7. Dayparting: different sources by time of day.
 
 See `docs/DESIGN.md` for the full trade-off notes.
