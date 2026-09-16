@@ -1,0 +1,20 @@
+[
+  {
+    "guid": "b9c1f0a2-3d47-4d2e-9d7a-0f8a5c6e1b34",
+    "name": "JellyVision",
+    "description": "Turns opted-in series and movies into always-on, cable-style channels on a deterministic wall-clock schedule.",
+    "overview": "Turn your library into old-school cable TV channels.",
+    "owner": "gessgallardo",
+    "category": "Live TV",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "Deterministic schedule engine and REST API.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.1.0.0/jellyvision_0.1.0.0.zip",
+        "checksum": "d300da162ca68113e5820e9d5369b032",
+        "timestamp": "2026-09-16T21:03:46Z"
+      }
+    ]
+  }
+]
