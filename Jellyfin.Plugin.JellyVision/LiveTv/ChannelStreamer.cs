@@ -31,6 +31,10 @@ namespace Jellyfin.Plugin.JellyVision.LiveTv;
 /// without it every reconnect rewinds the player to zero.</item>
 /// <item>The first item of the first batch uses <c>inpoint</c> so a client
 /// tuning in mid-programme joins where the channel actually is.</item>
+/// <item><c>-re</c> paces output at native frame rate. Without it ffmpeg
+/// encodes as fast as the CPU allows - measured at 5.5x realtime on a live
+/// server - so the client races ahead of the guide and the channel is no
+/// longer live.</item>
 /// </list>
 /// </remarks>
 public class ChannelStreamer
@@ -219,6 +223,7 @@ public class ChannelStreamer
             CultureInfo.InvariantCulture,
             $"-hide_banner -loglevel error -nostdin " +
             $"-fflags +genpts+discardcorrupt " +
+            $"-re " +
             $"-f concat -safe 0 -i \"{listPath}\" " +
             $"-map 0:v:0 -map 0:a:0? " +
             $"-c:v libx264 -preset veryfast -tune zerolatency " +

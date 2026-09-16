@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.2.2.0",
+        "changelog": "Pace the stream at realtime with -re; it ran 5.5x too fast.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.2.2.0/jellyvision_0.2.2.0.zip",
+        "checksum": "9e90d87ccefd971b8edc8c08c925828e",
+        "timestamp": "2026-09-16T21:41:13Z"
+      },
+      {
         "version": "0.2.1.0",
         "changelog": "Fix XMLTV utf-16 declaration and http:// stream URLs behind a TLS proxy.",
         "targetAbi": "10.11.0.0",
