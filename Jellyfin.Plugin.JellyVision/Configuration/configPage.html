@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>JellyVision</title>
+</head>
+<body>
+<div id="JellyVisionConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-controller="__plugin/JellyVision/configPage.js">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="JellyVisionConfigForm">
+                <h2>JellyVision</h2>
+                <p>Channels are edited here. The scaffold currently stores channel
+                   definitions in the plugin configuration; the editor UI is the next
+                   piece of work.</p>
+
+                <div class="inputContainer">
+                    <label class="inputLabel" for="GuideHours">Guide hours</label>
+                    <input id="GuideHours" name="GuideHours" type="number" is="emby-input" min="1" max="168" />
+                    <div class="fieldDescription">How many hours of schedule to generate per request.</div>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+
+            <h3>Channels</h3>
+            <div id="JellyVisionChannels"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var pluginId = 'b9c1f0a2-3d47-4d2e-9d7a-0f8a5c6e1b34';
+
+            function load(page) {
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    page.querySelector('#GuideHours').value = config.GuideHours || 24;
+                    renderChannels(page, config.Channels || []);
+                });
+            }
+
+            function renderChannels(page, channels) {
+                var host = page.querySelector('#JellyVisionChannels');
+                if (!channels.length) {
+                    host.innerHTML = '<p>No channels configured yet.</p>';
+                    return;
+                }
+                host.innerHTML = channels.map(function (c) {
+                    return '<p>' + c.Number + ' &mdash; ' + c.Name +
+                        ' (' + (c.Sources || []).length + ' sources)</p>';
+                }).join('');
+            }
+
+            document.querySelector('#JellyVisionConfigPage')
+                .addEventListener('pageshow', function () { load(this); });
+
+            document.querySelector('#JellyVisionConfigForm')
+                .addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var page = document.querySelector('#JellyVisionConfigPage');
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.GuideHours = parseInt(page.querySelector('#GuideHours').value, 10);
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+                    return false;
+                });
+        })();
+    </script>
+</div>
+</body>
+</html>

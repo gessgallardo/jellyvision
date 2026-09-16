@@ -1,0 +1,17 @@
+---
+name: "JellyVision"
+guid: "b9c1f0a2-3d47-4d2e-9d7a-0f8a5c6e1b34"
+version: "0.1.0.0"
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+overview: "Turn your library into old-school cable TV channels."
+description: >
+  JellyVision builds always-on virtual channels from opted-in series and
+  movies in your Jellyfin library and plays them one episode at a time on a
+  deterministic wall-clock schedule, like cable TV used to be.
+category: "Live TV"
+owner: "gessgallardo"
+artifacts:
+- "Jellyfin.Plugin.JellyVision.dll"
+changelog: >
+  Initial scaffold: deterministic schedule engine and REST API.
