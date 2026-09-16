@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.3.0.0",
+        "changelog": "Channel editor UI: create, edit, delete and preview channels from the dashboard.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.3.0.0/jellyvision_0.3.0.0.zip",
+        "checksum": "989ee637ca1f68e254b908098df0452e",
+        "timestamp": "2026-09-16T22:17:12Z"
+      },
+      {
         "version": "0.2.2.0",
         "changelog": "Pace the stream at realtime with -re; it ran 5.5x too fast.",
         "targetAbi": "10.11.0.0",

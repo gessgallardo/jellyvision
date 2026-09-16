@@ -5,103 +5,439 @@
     <title>JellyVision</title>
 </head>
 <body>
-<div id="JellyVisionConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
-     data-controller="__plugin/JellyVision/configPage.js">
+<div id="JellyVisionConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
-            <form id="JellyVisionConfigForm">
-                <h2>JellyVision</h2>
-                <p>Channels are edited here. The scaffold currently stores channel
-                   definitions in the plugin configuration; the editor UI is the next
-                   piece of work.</p>
+
+            <h2>JellyVision</h2>
+
+            <div id="jvChannelList"></div>
+
+            <div style="margin: 1em 0;">
+                <button is="emby-button" type="button" id="jvAddChannel" class="raised block emby-button">
+                    <span>Add channel</span>
+                </button>
+            </div>
+
+            <div id="jvEditor" style="display:none; border-top: 1px solid #333; padding-top: 1em;">
+                <h3 id="jvEditorTitle">Edit channel</h3>
 
                 <div class="inputContainer">
-                    <label class="inputLabel" for="GuideHours">Guide hours</label>
-                    <input id="GuideHours" name="GuideHours" type="number" is="emby-input" min="1" max="168" />
+                    <label class="inputLabel inputLabelUnfocused" for="jvName">Channel name</label>
+                    <input is="emby-input" type="text" id="jvName" />
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="jvNumber">Channel number</label>
+                    <input is="emby-input" type="number" id="jvNumber" min="1" />
+                    <div class="fieldDescription">Leave blank for the next free number.</div>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="jvMode">Order</label>
+                    <select is="emby-select" id="jvMode">
+                        <option value="0">Sequential (S01E01, S01E02, ...)</option>
+                        <option value="1">Shuffle</option>
+                        <option value="2">Block shuffle (whole seasons, in order)</option>
+                    </select>
+                </div>
+
+                <label class="checkboxContainer">
+                    <input is="emby-checkbox" type="checkbox" id="jvLive" />
+                    <span>Live: tuning in drops you mid-programme, like cable</span>
+                </label>
+
+                <label class="checkboxContainer">
+                    <input is="emby-checkbox" type="checkbox" id="jvEnabled" />
+                    <span>Enabled</span>
+                </label>
+
+                <h4>Content</h4>
+                <div id="jvSources"></div>
+
+                <div class="inputContainer" style="margin-top:1em;">
+                    <label class="inputLabel inputLabelUnfocused" for="jvSearch">Add a series, movie, collection or playlist</label>
+                    <input is="emby-input" type="text" id="jvSearch" placeholder="Type to search your library..." />
+                    <div id="jvSearchResults"></div>
+                </div>
+
+                <details style="margin: 1em 0;">
+                    <summary>Or add everything matching a genre / tag</summary>
+                    <div class="inputContainer" style="margin-top:.6em;">
+                        <label class="inputLabel inputLabelUnfocused" for="jvGenre">Genres (comma separated)</label>
+                        <input is="emby-input" type="text" id="jvGenre" placeholder="Anime, Comedy" />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="jvTag">Tags (comma separated)</label>
+                        <input is="emby-input" type="text" id="jvTag" />
+                    </div>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="jvFilterEpisodes" checked />
+                        <span>Include episodes</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="jvFilterMovies" checked />
+                        <span>Include movies</span>
+                    </label>
+                    <button is="emby-button" type="button" id="jvAddFilter" class="raised emby-button">
+                        <span>Add filter</span>
+                    </button>
+                </details>
+
+                <div id="jvPreview" style="margin: 1em 0; opacity: .85;"></div>
+
+                <div>
+                    <button is="emby-button" type="button" id="jvPreviewBtn" class="raised emby-button">
+                        <span>Preview</span>
+                    </button>
+                    <button is="emby-button" type="button" id="jvSave" class="raised button-submit emby-button">
+                        <span>Save channel</span>
+                    </button>
+                    <button is="emby-button" type="button" id="jvCancel" class="raised emby-button">
+                        <span>Cancel</span>
+                    </button>
+                </div>
+            </div>
+
+            <h3 style="margin-top:2em;">Settings</h3>
+            <form id="jvSettingsForm">
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="GuideHours">Guide hours</label>
+                    <input is="emby-input" type="number" id="GuideHours" min="1" max="168" />
                     <div class="fieldDescription">How many hours of schedule to generate per request.</div>
                 </div>
 
                 <div class="inputContainer">
-                    <label class="inputLabel" for="PublicBaseUrl">Public base URL</label>
-                    <input id="PublicBaseUrl" name="PublicBaseUrl" type="text" is="emby-input"
+                    <label class="inputLabel inputLabelUnfocused" for="PublicBaseUrl">Public base URL</label>
+                    <input is="emby-input" type="text" id="PublicBaseUrl"
                            placeholder="https://jellyfin.example.com/jellyfin" />
                     <div class="fieldDescription">
-                        Optional. The address clients use to reach this server. Set this if you
-                        run behind a reverse proxy that terminates TLS, otherwise the playlist
-                        may advertise http:// stream URLs.
+                        Optional. Set this if you run behind a reverse proxy that terminates TLS,
+                        otherwise the playlist may advertise http:// stream URLs.
                     </div>
                 </div>
 
-                <div>
-                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                        <span>Save</span>
-                    </button>
-                </div>
+                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                    <span>Save settings</span>
+                </button>
             </form>
-
-            <h3>Channels</h3>
-            <div id="JellyVisionChannels"></div>
 
             <h3>Live TV setup</h3>
             <p>Dashboard &rarr; Live TV &rarr; Add tuner device &rarr; <strong>M3U Tuner</strong>:</p>
-            <p><code id="JellyVisionM3u"></code></p>
+            <p><code id="jvM3u"></code></p>
             <p>Then Add guide provider &rarr; <strong>XMLTV</strong>:</p>
-            <p><code id="JellyVisionEpg"></code></p>
+            <p><code id="jvEpg"></code></p>
         </div>
     </div>
 
     <script type="text/javascript">
         (function () {
             var pluginId = 'b9c1f0a2-3d47-4d2e-9d7a-0f8a5c6e1b34';
+            var page = document.querySelector('#JellyVisionConfigPage');
+            var editing = null;
+            var config = null;
+            var searchTimer = null;
 
-            function load(page) {
-                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                    page.querySelector('#GuideHours').value = config.GuideHours || 24;
-                    page.querySelector('#PublicBaseUrl').value = config.PublicBaseUrl || '';
-                    renderChannels(page, config.Channels || []);
-                    renderUrls(page, config);
+            function el(id) { return page.querySelector(id); }
+
+            function api(path, method, body) {
+                var opts = {
+                    url: ApiClient.getUrl('JellyVision/' + path),
+                    type: method || 'GET',
+                    contentType: 'application/json'
+                };
+                if (body) { opts.data = JSON.stringify(body); }
+                if (!method || method === 'GET' || method === 'POST') { opts.dataType = 'json'; }
+                return ApiClient.ajax(opts);
+            }
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
                 });
             }
 
-            function renderUrls(page, config) {
-                var base = (config.PublicBaseUrl || '').trim() ||
-                    (window.location.origin + (ApiClient.serverAddress().split(window.location.origin)[1] || ''));
-                base = base.replace(/\/$/, '');
-                page.querySelector('#JellyVisionM3u').textContent =
-                    base + '/JellyVision/iptv/channels.m3u';
-                page.querySelector('#JellyVisionEpg').textContent =
-                    base + '/JellyVision/iptv/epg.xml';
+            function modeName(mode) {
+                return ['Sequential', 'Shuffle', 'Block shuffle'][mode] || 'Sequential';
             }
 
-            function renderChannels(page, channels) {
-                var host = page.querySelector('#JellyVisionChannels');
+            function renderList() {
+                var host = el('#jvChannelList');
+                var channels = (config.Channels || []).slice().sort(function (a, b) {
+                    return a.Number - b.Number;
+                });
+
                 if (!channels.length) {
-                    host.innerHTML = '<p>No channels configured yet.</p>';
+                    host.innerHTML = '<p>No channels yet. Add one below.</p>';
                     return;
                 }
+
                 host.innerHTML = channels.map(function (c) {
-                    return '<p>' + c.Number + ' &mdash; ' + c.Name +
-                        ' (' + (c.Sources || []).length + ' sources)</p>';
+                    return '<div style="display:flex;align-items:center;gap:1em;padding:.5em 0;">' +
+                        '<span style="min-width:2.5em;font-weight:600;">' + c.Number + '</span>' +
+                        '<span style="flex:1;">' + escapeHtml(c.Name) +
+                        (c.Enabled ? '' : ' <em>(disabled)</em>') +
+                        '<br/><span style="opacity:.6;font-size:.9em;">' +
+                        (c.Sources || []).length + ' source(s), ' + modeName(c.Mode) + '</span></span>' +
+                        '<button is="emby-button" type="button" class="raised emby-button jvEdit" data-id="' + c.Id + '">Edit</button>' +
+                        '<button is="emby-button" type="button" class="raised emby-button jvDelete" data-id="' + c.Id + '">Delete</button>' +
+                        '</div>';
                 }).join('');
+
+                Array.prototype.forEach.call(host.querySelectorAll('.jvEdit'), function (b) {
+                    b.addEventListener('click', function () { edit(this.getAttribute('data-id')); });
+                });
+                Array.prototype.forEach.call(host.querySelectorAll('.jvDelete'), function (b) {
+                    b.addEventListener('click', function () { remove(this.getAttribute('data-id')); });
+                });
             }
 
-            document.querySelector('#JellyVisionConfigPage')
-                .addEventListener('pageshow', function () { load(this); });
+            function edit(id) {
+                var found = (config.Channels || []).filter(function (c) { return c.Id === id; })[0];
+                editing = JSON.parse(JSON.stringify(found));
+                if (!editing.Sources) { editing.Sources = []; }
+                showEditor();
+            }
 
-            document.querySelector('#JellyVisionConfigForm')
-                .addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    var page = document.querySelector('#JellyVisionConfigPage');
-                    Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                        config.GuideHours = parseInt(page.querySelector('#GuideHours').value, 10);
-                        config.PublicBaseUrl = page.querySelector('#PublicBaseUrl').value.trim();
-                        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
-                            Dashboard.processPluginConfigurationUpdateResult(result);
+            function addChannel() {
+                editing = {
+                    Id: '', Number: 0, Name: '', Enabled: true,
+                    Mode: 0, LiveWallClock: true, Sources: []
+                };
+                showEditor();
+            }
+
+            function showEditor() {
+                el('#jvEditorTitle').textContent = editing.Id ? 'Edit channel' : 'New channel';
+                el('#jvName').value = editing.Name || '';
+                el('#jvNumber').value = editing.Number || '';
+                el('#jvMode').value = String(editing.Mode || 0);
+                el('#jvLive').checked = editing.LiveWallClock !== false;
+                el('#jvEnabled').checked = editing.Enabled !== false;
+                el('#jvPreview').innerHTML = '';
+                el('#jvSearch').value = '';
+                el('#jvSearchResults').innerHTML = '';
+                renderSources();
+                el('#jvEditor').style.display = 'block';
+            }
+
+            function hideEditor() {
+                editing = null;
+                el('#jvEditor').style.display = 'none';
+            }
+
+            function describeFilter(s) {
+                var parts = [];
+                if ((s.Genres || []).length) { parts.push('genres: ' + s.Genres.join(', ')); }
+                if ((s.Tags || []).length) { parts.push('tags: ' + s.Tags.join(', ')); }
+                return 'Filter (' + (parts.join('; ') || 'everything') + ')';
+            }
+
+            function renderSources() {
+                var host = el('#jvSources');
+                if (!editing.Sources.length) {
+                    host.innerHTML = '<p style="opacity:.6;">Nothing added yet.</p>';
+                    return;
+                }
+                host.innerHTML = editing.Sources.map(function (s, i) {
+                    return '<div style="display:flex;align-items:center;gap:1em;padding:.25em 0;">' +
+                        '<span style="flex:1;">' + escapeHtml(s.Label || describeFilter(s)) + '</span>' +
+                        '<button is="emby-button" type="button" class="raised emby-button jvRemoveSource" data-i="' + i + '">Remove</button>' +
+                        '</div>';
+                }).join('');
+                Array.prototype.forEach.call(host.querySelectorAll('.jvRemoveSource'), function (b) {
+                    b.addEventListener('click', function () {
+                        editing.Sources.splice(parseInt(this.getAttribute('data-i'), 10), 1);
+                        renderSources();
+                    });
+                });
+            }
+
+            function kindFor(type) {
+                if (type === 'Series') { return 0; }
+                if (type === 'Movie') { return 1; }
+                if (type === 'BoxSet') { return 2; }
+                if (type === 'Playlist') { return 3; }
+                return 1;
+            }
+
+            function search(term) {
+                if (!term || term.length < 2) {
+                    el('#jvSearchResults').innerHTML = '';
+                    return;
+                }
+                ApiClient.getJSON(ApiClient.getUrl('Items', {
+                    IncludeItemTypes: 'Series,Movie,BoxSet,Playlist',
+                    Recursive: true,
+                    Limit: 12,
+                    SortBy: 'SortName',
+                    Fields: 'ProductionYear',
+                    searchTerm: term
+                })).then(function (result) {
+                    var host = el('#jvSearchResults');
+                    if (!result.Items.length) {
+                        host.innerHTML = '<p style="opacity:.6;">Nothing found.</p>';
+                        return;
+                    }
+                    host.innerHTML = result.Items.map(function (i) {
+                        return '<div style="display:flex;align-items:center;gap:1em;padding:.25em 0;">' +
+                            '<span style="flex:1;">' + escapeHtml(i.Name) +
+                            (i.ProductionYear ? ' (' + i.ProductionYear + ')' : '') +
+                            ' <span style="opacity:.6;">' + i.Type + '</span></span>' +
+                            '<button is="emby-button" type="button" class="raised emby-button jvPick" ' +
+                            'data-id="' + i.Id + '" data-type="' + i.Type + '" ' +
+                            'data-name="' + escapeHtml(i.Name) + '">Add</button></div>';
+                    }).join('');
+
+                    Array.prototype.forEach.call(host.querySelectorAll('.jvPick'), function (b) {
+                        b.addEventListener('click', function () {
+                            editing.Sources.push({
+                                Kind: kindFor(this.getAttribute('data-type')),
+                                ItemId: this.getAttribute('data-id'),
+                                Label: this.getAttribute('data-name'),
+                                Genres: [], Tags: [],
+                                IncludeEpisodes: true, IncludeMovies: true
+                            });
+                            renderSources();
+                            el('#jvSearch').value = '';
+                            host.innerHTML = '';
                         });
                     });
-                    return false;
                 });
+            }
+
+            function collect() {
+                return {
+                    Id: editing.Id || '',
+                    Name: el('#jvName').value.trim(),
+                    Number: parseInt(el('#jvNumber').value, 10) || 0,
+                    Enabled: el('#jvEnabled').checked,
+                    Mode: parseInt(el('#jvMode').value, 10),
+                    LiveWallClock: el('#jvLive').checked,
+                    Sources: editing.Sources
+                };
+            }
+
+            function preview() {
+                var dto = collect();
+                if (!dto.Sources.length) {
+                    el('#jvPreview').innerHTML = '<p>Add some content first.</p>';
+                    return;
+                }
+                el('#jvPreview').innerHTML = '<p>Working...</p>';
+                api('Manage/Preview', 'POST', dto).then(function (res) {
+                    var r = typeof res === 'string' ? JSON.parse(res) : res;
+                    var rows = r.Upcoming.map(function (u) {
+                        return '<div>' + new Date(u.StartUtc).toLocaleTimeString() + ' &mdash; ' +
+                            escapeHtml(u.Title) + '</div>';
+                    }).join('');
+                    el('#jvPreview').innerHTML =
+                        '<p><strong>' + r.ItemCount + ' items</strong>, ' +
+                        r.TotalHours.toFixed(1) + ' h per full cycle</p>' + rows;
+                }, function () {
+                    el('#jvPreview').innerHTML = '<p>Preview failed.</p>';
+                });
+            }
+
+            function save() {
+                var dto = collect();
+                if (!dto.Name) { Dashboard.alert('Give the channel a name.'); return; }
+                if (!dto.Sources.length) { Dashboard.alert('Add at least one source.'); return; }
+
+                Dashboard.showLoadingMsg();
+                api('Manage/Channels', 'POST', dto).then(function () {
+                    return reload();
+                }).then(function () {
+                    Dashboard.hideLoadingMsg();
+                    hideEditor();
+                }, function () {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Could not save the channel.');
+                });
+            }
+
+            function remove(id) {
+                var found = (config.Channels || []).filter(function (c) { return c.Id === id; })[0];
+                var name = found ? found.Name : 'this channel';
+                Dashboard.confirm('Delete "' + name + '"?', 'Delete channel', function (ok) {
+                    if (!ok) { return; }
+                    Dashboard.showLoadingMsg();
+                    api('Manage/Channels/' + id, 'DELETE').then(function () {
+                        return reload();
+                    }).then(function () {
+                        Dashboard.hideLoadingMsg();
+                        if (editing && editing.Id === id) { hideEditor(); }
+                    });
+                });
+            }
+
+            function renderUrls() {
+                var base = (config.PublicBaseUrl || '').trim();
+                if (!base) { base = ApiClient.serverAddress(); }
+                base = base.replace(/\/$/, '');
+                el('#jvM3u').textContent = base + '/JellyVision/iptv/channels.m3u';
+                el('#jvEpg').textContent = base + '/JellyVision/iptv/epg.xml';
+            }
+
+            function reload() {
+                return ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    config = c;
+                    el('#GuideHours').value = c.GuideHours || 24;
+                    el('#PublicBaseUrl').value = c.PublicBaseUrl || '';
+                    renderList();
+                    renderUrls();
+                });
+            }
+
+            page.addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                reload().then(function () { Dashboard.hideLoadingMsg(); });
+            });
+
+            el('#jvAddChannel').addEventListener('click', addChannel);
+            el('#jvCancel').addEventListener('click', hideEditor);
+            el('#jvSave').addEventListener('click', save);
+            el('#jvPreviewBtn').addEventListener('click', preview);
+
+            el('#jvSearch').addEventListener('input', function () {
+                var term = this.value;
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () { search(term); }, 300);
+            });
+
+            el('#jvAddFilter').addEventListener('click', function () {
+                var genres = el('#jvGenre').value.split(',').map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s; });
+                var tags = el('#jvTag').value.split(',').map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s; });
+                if (!genres.length && !tags.length) {
+                    Dashboard.alert('Enter at least one genre or tag.');
+                    return;
+                }
+                editing.Sources.push({
+                    Kind: 4, ItemId: '', Label: '',
+                    Genres: genres, Tags: tags,
+                    IncludeEpisodes: el('#jvFilterEpisodes').checked,
+                    IncludeMovies: el('#jvFilterMovies').checked
+                });
+                el('#jvGenre').value = '';
+                el('#jvTag').value = '';
+                renderSources();
+            });
+
+            el('#jvSettingsForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    c.GuideHours = parseInt(el('#GuideHours').value, 10) || 24;
+                    c.PublicBaseUrl = el('#PublicBaseUrl').value.trim();
+                    ApiClient.updatePluginConfiguration(pluginId, c).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                        reload();
+                    });
+                });
+                return false;
+            });
         })();
     </script>
 </div>
