@@ -48,5 +48,5 @@ public class ChannelConfig
     /// <summary>
     /// Gets or sets the sources feeding this channel.
     /// </summary>
-    public IList<ChannelSource> Sources { get; set; } = new List<ChannelSource>();
+    public List<ChannelSource> Sources { get; set; } = new List<ChannelSource>();
 }

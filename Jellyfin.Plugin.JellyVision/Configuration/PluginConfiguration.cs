@@ -11,7 +11,7 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>
     /// Gets or sets the configured channels.
     /// </summary>
-    public IList<ChannelConfig> Channels { get; set; } = new List<ChannelConfig>();
+    public List<ChannelConfig> Channels { get; set; } = new List<ChannelConfig>();
 
     /// <summary>
     /// Gets or sets how many hours of guide data to generate on request.

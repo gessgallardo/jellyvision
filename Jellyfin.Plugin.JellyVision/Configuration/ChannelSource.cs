@@ -25,12 +25,12 @@ public class ChannelSource
     /// <summary>
     /// Gets or sets the genres a <see cref="SourceKind.Filter"/> source matches.
     /// </summary>
-    public IList<string> Genres { get; set; } = new List<string>();
+    public List<string> Genres { get; set; } = new List<string>();
 
     /// <summary>
     /// Gets or sets the tags a <see cref="SourceKind.Filter"/> source matches.
     /// </summary>
-    public IList<string> Tags { get; set; } = new List<string>();
+    public List<string> Tags { get; set; } = new List<string>();
 
     /// <summary>
     /// Gets or sets a value indicating whether episodes are included for filter sources.
