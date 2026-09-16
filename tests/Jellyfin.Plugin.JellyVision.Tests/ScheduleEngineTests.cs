@@ -125,6 +125,30 @@ public class ScheduleEngineTests
         Assert.Equal("good", slot!.Value.Item.ItemId);
     }
 
+    [Theory]
+    [InlineData(ScheduleMode.Sequential)]
+    [InlineData(ScheduleMode.Shuffle)]
+    [InlineData(ScheduleMode.BlockShuffle)]
+    public void GuideFirstEntry_MatchesWhatIsActuallyAiring(ScheduleMode mode)
+    {
+        // Regression: the guide used to anchor its cursor at the current
+        // programme's start time while walking the order from index 0, so the
+        // first entry carried the right times with the WRONG item - exactly the
+        // guide/stream drift this engine exists to prevent.
+        var items = Sample();
+
+        for (var m = 0; m < 240; m += 7)
+        {
+            var now = Anchor.AddMinutes(m);
+            var current = ScheduleEngine.GetCurrent(items, mode, Anchor, now, 5, out _);
+            var guide = ScheduleEngine.GetGuide(items, mode, Anchor, now, TimeSpan.FromHours(2), 5);
+
+            Assert.Equal(current!.Value.Item.ItemId, guide[0].Item.ItemId);
+            Assert.Equal(current.Value.StartUtc, guide[0].StartUtc);
+            Assert.Equal(current.Value.EndUtc, guide[0].EndUtc);
+        }
+    }
+
     [Fact]
     public void EmptyChannel_ReturnsNull()
     {

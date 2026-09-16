@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.1.2.0",
+        "changelog": "Fix: guide first entry disagreed with what was actually airing.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.1.2.0/jellyvision_0.1.2.0.zip",
+        "checksum": "2b18d5bb77784a0d2bcb4b77e3cbd99d",
+        "timestamp": "2026-09-16T21:13:55Z"
+      },
+      {
         "version": "0.1.1.0",
         "changelog": "Fix: plugin configuration collections were not deserialised on save.",
         "targetAbi": "10.11.0.0",

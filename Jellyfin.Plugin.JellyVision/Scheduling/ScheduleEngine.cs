@@ -94,19 +94,25 @@ public static class ScheduleEngine
             return slots;
         }
 
-        var current = GetCurrent(items, mode, anchorUtc, fromUtc, seed, out _);
-        if (current is null)
-        {
-            return slots;
-        }
-
         var endUtc = fromUtc + window;
-        var cursorUtc = current.Value.StartUtc;
         var cycleTicks = cycle.Ticks;
 
-        while (cursorUtc < endUtc)
+        // Start at the boundary of the cycle containing fromUtc and walk the
+        // order from its first item. Anchoring the cursor at the *current*
+        // programme's start while iterating the order from index 0 would pair
+        // the current start time with the wrong item, and the guide would
+        // disagree with what is actually airing.
+        var elapsedTicks = (fromUtc - anchorUtc).Ticks;
+        if (elapsedTicks < 0)
         {
-            var cycleIndex = (cursorUtc - anchorUtc).Ticks / cycleTicks;
+            elapsedTicks = 0;
+        }
+
+        var startCycle = elapsedTicks / cycleTicks;
+        var cursorUtc = anchorUtc.AddTicks(startCycle * cycleTicks);
+
+        for (var cycleIndex = startCycle; cursorUtc < endUtc; cycleIndex++)
+        {
             var order = Order(items, mode, seed, cycleIndex);
             foreach (var item in order)
             {
