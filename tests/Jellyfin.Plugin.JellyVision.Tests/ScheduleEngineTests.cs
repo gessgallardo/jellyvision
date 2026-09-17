@@ -96,6 +96,34 @@ public class ScheduleEngineTests
     }
 
     [Fact]
+    public void RoundRobin_TakesOneEpisodePerSeriesBeforeAdvancing()
+    {
+        IReadOnlyList<ScheduleItem> items =
+        [
+            new("d1", "Dexter S01E01", TimeSpan.FromMinutes(20), "dexter-s1", "dexter"),
+            new("d2", "Dexter S01E02", TimeSpan.FromMinutes(20), "dexter-s1", "dexter"),
+            new("d3", "Dexter S01E03", TimeSpan.FromMinutes(20), "dexter-s1", "dexter"),
+            new("c1", "Criminal Minds S01E01", TimeSpan.FromMinutes(20), "criminal-s1", "criminal"),
+            new("c2", "Criminal Minds S01E02", TimeSpan.FromMinutes(20), "criminal-s1", "criminal"),
+            new("t1", "Tracker S01E01", TimeSpan.FromMinutes(20), "tracker-s1", "tracker"),
+            new("t2", "Tracker S01E02", TimeSpan.FromMinutes(20), "tracker-s1", "tracker"),
+            new("t3", "Tracker S01E03", TimeSpan.FromMinutes(20), "tracker-s1", "tracker"),
+        ];
+
+        var ids = ScheduleEngine.GetGuide(
+                items,
+                ScheduleMode.RoundRobin,
+                Anchor,
+                Anchor,
+                TimeSpan.FromMinutes(160),
+                1)
+            .Select(s => s.Item.ItemId)
+            .ToList();
+
+        Assert.Equal(["d1", "c1", "t1", "d2", "c2", "t2", "d3", "t3"], ids);
+    }
+
+    [Fact]
     public void Guide_IsContiguousAndCoversWindow()
     {
         var from = Anchor.AddMinutes(43);

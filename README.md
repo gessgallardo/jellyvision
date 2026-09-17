@@ -68,6 +68,7 @@ ScheduleEngine  ---> ProgramSlot (item + start + end + seek offset)
 - `Sequential` — natural order (series, season, episode).
 - `Shuffle` — seeded Fisher-Yates, reshuffled deterministically each cycle.
 - `BlockShuffle` — shuffle whole seasons/series, keep each block in order.
+- `RoundRobin` — one episode from each series per round, preserving episode order.
 
 Per channel, `LiveWallClock` decides whether tuning in joins the programme
 already in progress (cable behaviour) or starts it from the beginning.
