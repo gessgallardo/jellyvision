@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.4.0.0",
+        "changelog": "Round-robin scheduling: one episode per series before advancing.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.4.0.0/jellyvision_0.4.0.0.zip",
+        "checksum": "f06a1c32aafd736ae100d71d9a7d76ca",
+        "timestamp": "2026-09-17T20:27:01Z"
+      },
+      {
         "version": "0.3.0.0",
         "changelog": "Channel editor UI: create, edit, delete and preview channels from the dashboard.",
         "targetAbi": "10.11.0.0",
