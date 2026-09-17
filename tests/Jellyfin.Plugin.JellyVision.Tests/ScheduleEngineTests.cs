@@ -157,6 +157,7 @@ public class ScheduleEngineTests
     [InlineData(ScheduleMode.Sequential)]
     [InlineData(ScheduleMode.Shuffle)]
     [InlineData(ScheduleMode.BlockShuffle)]
+    [InlineData(ScheduleMode.RoundRobin)]
     public void GuideFirstEntry_MatchesWhatIsActuallyAiring(ScheduleMode mode)
     {
         // Regression: the guide used to anchor its cursor at the current
