@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Jellyfin.Plugin.JellyVision.Configuration;
 using Jellyfin.Plugin.JellyVision.Scheduling;
 using MediaBrowser.Common.Api;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Model.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.JellyVision.Api;
 
@@ -23,16 +26,26 @@ public class ChannelManagementController : ControllerBase
 {
     private readonly ChannelResolver _resolver;
     private readonly ITaskManager _taskManager;
+    private readonly IApplicationPaths _appPaths;
+    private readonly ILogger<ChannelManagementController> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChannelManagementController"/> class.
     /// </summary>
     /// <param name="resolver">The channel resolver.</param>
     /// <param name="taskManager">The scheduled task manager, used to refresh the guide.</param>
-    public ChannelManagementController(ChannelResolver resolver, ITaskManager taskManager)
+    /// <param name="appPaths">Application paths, used to clear the cached guide.</param>
+    /// <param name="logger">The logger.</param>
+    public ChannelManagementController(
+        ChannelResolver resolver,
+        ITaskManager taskManager,
+        IApplicationPaths appPaths,
+        ILogger<ChannelManagementController> logger)
     {
         _resolver = resolver;
         _taskManager = taskManager;
+        _appPaths = appPaths;
+        _logger = logger;
     }
 
     /// <summary>
@@ -207,6 +220,11 @@ public class ChannelManagementController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult RefreshGuide()
     {
+        // Jellyfin caches the downloaded XMLTV document for an hour, so running
+        // the refresh task alone re-reads the same stale file and the guide does
+        // not change. Drop the cache first.
+        DropXmltvCache();
+
         // The guide task lives in Jellyfin.LiveTv, which plugins do not
         // reference, so it is located by key rather than by type.
         var task = _taskManager.ScheduledTasks.FirstOrDefault(
@@ -219,6 +237,34 @@ public class ChannelManagementController : ControllerBase
 
         _taskManager.Execute(task, new TaskOptions());
         return NoContent();
+    }
+
+    private void DropXmltvCache()
+    {
+        try
+        {
+            var dir = Path.Combine(_appPaths.CachePath, "xmltv");
+            if (!Directory.Exists(dir))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(dir, "*.xml"))
+            {
+                try
+                {
+                    System.IO.File.Delete(file);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogDebug(ex, "Could not delete cached guide {File}", file);
+                }
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Could not clear the XMLTV cache");
+        }
     }
 
     private static int NextNumber(PluginConfiguration config, ChannelConfig self)

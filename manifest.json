@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.4.2.0",
+        "changelog": "Guide refresh now clears Jellyfin's 1-hour XMLTV cache first.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.4.2.0/jellyvision_0.4.2.0.zip",
+        "checksum": "6801ab7424b82060fcdc49dbc382f8bf",
+        "timestamp": "2026-09-17T20:59:40Z"
+      },
+      {
         "version": "0.4.1.0",
         "changelog": "Fix channel edits resetting the schedule mode; add a guide refresh button.",
         "targetAbi": "10.11.0.0",
