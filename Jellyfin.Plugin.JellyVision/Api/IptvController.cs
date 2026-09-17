@@ -30,17 +30,17 @@ namespace Jellyfin.Plugin.JellyVision.Api;
 public class IptvController : ControllerBase
 {
     private readonly ChannelResolver _resolver;
-    private readonly ChannelStreamer _streamer;
+    private readonly ChannelSessionManager _sessions;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IptvController"/> class.
     /// </summary>
     /// <param name="resolver">The channel resolver.</param>
-    /// <param name="streamer">The channel streamer.</param>
-    public IptvController(ChannelResolver resolver, ChannelStreamer streamer)
+    /// <param name="sessions">The shared channel session manager.</param>
+    public IptvController(ChannelResolver resolver, ChannelSessionManager sessions)
     {
         _resolver = resolver;
-        _streamer = streamer;
+        _sessions = sessions;
     }
 
     private static PluginConfiguration Config
@@ -84,7 +84,27 @@ public class IptvController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult GetPlaylist()
     {
-        var body = IptvDocuments.BuildM3u(Config.Channels, ResolveBaseUrl());
+        // Borrow each channel's current programme artwork as its logo.
+        var logos = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var channel in Config.Channels.Where(c => c.Enabled))
+        {
+            var items = _resolver.Resolve(channel);
+            var current = ScheduleEngine.GetCurrent(
+                items,
+                channel.Mode,
+                channel.AnchorUtc,
+                DateTime.UtcNow,
+                ScheduleEngine.SeedFor(channel.Id),
+                out _);
+
+            var logoId = current?.Item.Metadata?.SeriesImageItemId;
+            if (!string.IsNullOrEmpty(logoId))
+            {
+                logos[channel.Id] = logoId;
+            }
+        }
+
+        var body = IptvDocuments.BuildM3u(Config.Channels, ResolveBaseUrl(), logos);
         return Content(body, "application/x-mpegurl");
     }
 
@@ -140,7 +160,9 @@ public class IptvController : ControllerBase
         Response.ContentType = "video/mp2t";
         Response.Headers.CacheControl = "no-cache, no-store";
 
-        await _streamer.StreamAsync(channel, Response.Body, HttpContext.RequestAborted)
+        // Goes through the session manager so every viewer of this channel
+        // shares one encoder and sees the same broadcast.
+        await _sessions.StreamAsync(channel, Response.Body, HttpContext.RequestAborted)
             .ConfigureAwait(false);
 
         return new EmptyResult();

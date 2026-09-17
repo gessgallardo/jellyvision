@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.6.0.0",
+        "changelog": "Stream sharing: one ffmpeg per channel regardless of viewer count. Channel logos in the M3U.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.6.0.0/jellyvision_0.6.0.0.zip",
+        "checksum": "ce09a6fe26b196d2d184e22ab084fead",
+        "timestamp": "2026-09-17T21:57:49Z"
+      },
+      {
         "version": "0.5.0.0",
         "changelog": "Guide artwork, episode titles, descriptions and channel logos.",
         "targetAbi": "10.11.0.0",

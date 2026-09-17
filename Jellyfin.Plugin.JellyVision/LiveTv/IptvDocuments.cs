@@ -22,11 +22,16 @@ public static class IptvDocuments
     /// </summary>
     /// <param name="channels">The configured channels.</param>
     /// <param name="baseUrl">The absolute base URL clients should call back on.</param>
+    /// <param name="logos">Optional map of channel id to the library item whose artwork is the channel logo.</param>
     /// <returns>The playlist body.</returns>
-    public static string BuildM3u(IEnumerable<ChannelConfig> channels, string baseUrl)
+    public static string BuildM3u(
+        IEnumerable<ChannelConfig> channels,
+        string baseUrl,
+        IReadOnlyDictionary<string, string>? logos = null)
     {
         ArgumentNullException.ThrowIfNull(channels);
 
+        var root = baseUrl.TrimEnd('/');
         var sb = new StringBuilder();
         sb.Append("#EXTM3U\n");
 
@@ -40,9 +45,21 @@ public static class IptvDocuments
             var id = ChannelTvgId(channel);
             sb.Append(CultureInfo.InvariantCulture, $"#EXTINF:-1 tvg-id=\"{id}\"")
               .Append(CultureInfo.InvariantCulture, $" tvg-name=\"{Escape(channel.Name)}\"")
-              .Append(CultureInfo.InvariantCulture, $" tvg-chno=\"{channel.Number}\"")
-              .Append(CultureInfo.InvariantCulture, $" group-title=\"JellyVision\",{Escape(channel.Name)}\n")
-              .Append(CultureInfo.InvariantCulture, $"{baseUrl.TrimEnd('/')}/JellyVision/iptv/stream/{channel.Id}\n");
+              .Append(CultureInfo.InvariantCulture, $" tvg-chno=\"{channel.Number}\"");
+
+            // Players that read the playlist rather than the EPG (TiviMate, VLC,
+            // Kodi) only see a channel logo if it is on the EXTINF line.
+            if (logos is not null &&
+                logos.TryGetValue(channel.Id, out var logoItemId) &&
+                !string.IsNullOrEmpty(logoItemId))
+            {
+                sb.Append(
+                    CultureInfo.InvariantCulture,
+                    $" tvg-logo=\"{ImageUrl(root, logoItemId, "Primary", 400)}\"");
+            }
+
+            sb.Append(CultureInfo.InvariantCulture, $" group-title=\"JellyVision\",{Escape(channel.Name)}\n")
+              .Append(CultureInfo.InvariantCulture, $"{root}/JellyVision/iptv/stream/{channel.Id}\n");
         }
 
         return sb.ToString();

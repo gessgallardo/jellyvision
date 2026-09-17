@@ -16,5 +16,6 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     {
         serviceCollection.AddSingleton<ChannelResolver>();
         serviceCollection.AddSingleton<ChannelStreamer>();
+        serviceCollection.AddSingleton<ChannelSessionManager>();
     }
 }
