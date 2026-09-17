@@ -8,6 +8,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Playlists;
+using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.JellyVision.Scheduling;
@@ -91,7 +92,45 @@ public class ChannelResolver
             title ?? string.Empty,
             TimeSpan.FromTicks(item.RunTimeTicks ?? 0),
             blockKey,
-            seriesKey);
+            seriesKey,
+            BuildMetadata(item));
+    }
+
+    private static ScheduleItemMetadata BuildMetadata(BaseItem item)
+    {
+        var metadata = new ScheduleItemMetadata
+        {
+            EpisodeName = item.Name ?? string.Empty,
+            Overview = item.Overview ?? string.Empty,
+            Year = item.ProductionYear,
+            IsMovie = item is Movie,
+            PrimaryImageItemId = item.HasImage(ImageType.Primary)
+                ? item.Id.ToString("N")
+                : string.Empty,
+        };
+
+        foreach (var genre in item.Genres)
+        {
+            metadata.Genres.Add(genre);
+        }
+
+        if (item is Episode episode)
+        {
+            metadata.SeriesName = episode.SeriesName ?? string.Empty;
+            metadata.SeasonNumber = episode.ParentIndexNumber;
+            metadata.EpisodeNumber = episode.IndexNumber;
+
+            if (episode.SeriesId != Guid.Empty)
+            {
+                metadata.SeriesImageItemId = episode.SeriesId.ToString("N");
+            }
+        }
+        else
+        {
+            metadata.SeriesImageItemId = metadata.PrimaryImageItemId;
+        }
+
+        return metadata;
     }
 
     private IEnumerable<BaseItem> Expand(ChannelSource source)

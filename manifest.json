@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.5.0.0",
+        "changelog": "Guide artwork, episode titles, descriptions and channel logos.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.5.0.0/jellyvision_0.5.0.0.zip",
+        "checksum": "71f69c36e9b60b3baec367f48cbea436",
+        "timestamp": "2026-09-17T21:29:08Z"
+      },
+      {
         "version": "0.4.2.0",
         "changelog": "Guide refresh now clears Jellyfin's 1-hour XMLTV cache first.",
         "targetAbi": "10.11.0.0",

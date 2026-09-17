@@ -158,6 +158,141 @@ public class IptvDocumentsTests
         Assert.Equal("tv", parsed.Root!.Name.LocalName);
     }
 
+    private static IReadOnlyList<ScheduleItem> RichItems() =>
+    [
+        new(
+            "a",
+            "Criminal Minds - Derailed",
+            TimeSpan.FromMinutes(44),
+            "s1",
+            "criminal",
+            new ScheduleItemMetadata
+            {
+                SeriesName = "Criminal Minds",
+                EpisodeName = "Derailed",
+                Overview = "The team negotiates a hostage situation.",
+                SeasonNumber = 1,
+                EpisodeNumber = 9,
+                Year = 2005,
+                PrimaryImageItemId = "ep111",
+                SeriesImageItemId = "ser222",
+                Genres = { "Drama", "Crime" },
+            }),
+    ];
+
+    [Fact]
+    public void Xmltv_CarriesArtworkAndEpisodeMetadata()
+    {
+        var channel = Channel();
+        var slots = ScheduleEngine.GetGuide(
+            RichItems(), ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromMinutes(40), 1);
+
+        var doc = XDocument.Parse(
+            IptvDocuments.BuildXmltv([(channel, slots)], "https://host/jellyfin"));
+        var programme = doc.Root!.Elements("programme").First();
+
+        // Title is the series; the episode name goes in sub-title, so clients
+        // stop showing a raw timestamp as the second line.
+        Assert.Equal("Criminal Minds", programme.Element("title")!.Value);
+        Assert.Equal("Derailed", programme.Element("sub-title")!.Value);
+        Assert.Equal("The team negotiates a hostage situation.", programme.Element("desc")!.Value);
+
+        // <icon src> is what Jellyfin maps to the programme tile image.
+        var icon = programme.Element("icon")!.Attribute("src")!.Value;
+        Assert.Equal("https://host/jellyfin/Items/ep111/Images/Primary?maxWidth=600", icon);
+
+        Assert.Contains(
+            programme.Elements("image"),
+            i => i.Attribute("type")!.Value == "backdrop" && i.Value.Contains("ser222", StringComparison.Ordinal));
+
+        Assert.Contains(
+            programme.Elements("episode-num"),
+            e => e.Attribute("system")!.Value == "onscreen" && e.Value == "S01E09");
+        Assert.Contains(
+            programme.Elements("episode-num"),
+            e => e.Attribute("system")!.Value == "xmltv_ns" && e.Value == "0.8.");
+
+        Assert.Contains(programme.Elements("category"), c => c.Value == "Drama");
+        Assert.Equal("2005", programme.Element("date")!.Value);
+    }
+
+    [Fact]
+    public void Xmltv_SubTitleIsNeverARawTimestamp()
+    {
+        // Regression: the old dedupe hack wrote the start stamp into sub-title,
+        // which surfaced as "20260917204559 +0000" under every guide tile.
+        var channel = Channel();
+        var slots = ScheduleEngine.GetGuide(
+            RichItems(), ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromHours(2), 1);
+
+        var doc = XDocument.Parse(
+            IptvDocuments.BuildXmltv([(channel, slots)], "https://host"));
+
+        foreach (var sub in doc.Root!.Elements("programme").Elements("sub-title"))
+        {
+            Assert.DoesNotMatch(@"^\d{14}", sub.Value);
+        }
+    }
+
+    [Fact]
+    public void Xmltv_WithoutBaseUrl_OmitsArtworkButStaysValid()
+    {
+        var channel = Channel();
+        var slots = ScheduleEngine.GetGuide(
+            RichItems(), ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromMinutes(40), 1);
+
+        var doc = XDocument.Parse(IptvDocuments.BuildXmltv([(channel, slots)]));
+        var programme = doc.Root!.Elements("programme").First();
+
+        Assert.Null(programme.Element("icon"));
+        Assert.Equal("Criminal Minds", programme.Element("title")!.Value);
+    }
+
+    [Fact]
+    public void Xmltv_ChannelCarriesALogo()
+    {
+        var channel = Channel();
+        var slots = ScheduleEngine.GetGuide(
+            RichItems(), ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromMinutes(40), 1);
+
+        var doc = XDocument.Parse(
+            IptvDocuments.BuildXmltv([(channel, slots)], "https://host"));
+
+        var icon = doc.Root!.Element("channel")!.Element("icon");
+        Assert.NotNull(icon);
+        Assert.Contains("ser222", icon!.Attribute("src")!.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Xmltv_MovieUsesItsOwnTitleAndNoSubTitle()
+    {
+        IReadOnlyList<ScheduleItem> items =
+        [
+            new(
+                "m1",
+                "Blade Runner",
+                TimeSpan.FromMinutes(117),
+                "m1",
+                "m1",
+                new ScheduleItemMetadata
+                {
+                    EpisodeName = "Blade Runner",
+                    IsMovie = true,
+                    PrimaryImageItemId = "mov1",
+                    SeriesImageItemId = "mov1",
+                }),
+        ];
+
+        var slots = ScheduleEngine.GetGuide(
+            items, ScheduleMode.Sequential, Anchor, Anchor, TimeSpan.FromMinutes(60), 1);
+
+        var doc = XDocument.Parse(IptvDocuments.BuildXmltv([(Channel(), slots)], "https://host"));
+        var programme = doc.Root!.Elements("programme").First();
+
+        Assert.Equal("Blade Runner", programme.Element("title")!.Value);
+        Assert.Null(programme.Element("sub-title"));
+    }
+
     [Fact]
     public void Xmltv_EmptyChannelListStillParses()
     {

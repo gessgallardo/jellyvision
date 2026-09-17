@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml;
 using Jellyfin.Plugin.JellyVision.Configuration;
@@ -51,9 +52,11 @@ public static class IptvDocuments
     /// Builds the XMLTV guide document.
     /// </summary>
     /// <param name="programmes">Per-channel programme listings.</param>
+    /// <param name="baseUrl">Absolute base URL used to build artwork links.</param>
     /// <returns>The XMLTV body.</returns>
     public static string BuildXmltv(
-        IReadOnlyList<(ChannelConfig Channel, IReadOnlyList<ProgramSlot> Slots)> programmes)
+        IReadOnlyList<(ChannelConfig Channel, IReadOnlyList<ProgramSlot> Slots)> programmes,
+        string baseUrl = "")
     {
         ArgumentNullException.ThrowIfNull(programmes);
 
@@ -72,7 +75,7 @@ public static class IptvDocuments
             writer.WriteStartElement("tv");
             writer.WriteAttributeString("generator-info-name", "JellyVision");
 
-            foreach (var (channel, _) in programmes)
+            foreach (var (channel, slots) in programmes)
             {
                 writer.WriteStartElement("channel");
                 writer.WriteAttributeString("id", ChannelTvgId(channel));
@@ -85,6 +88,20 @@ public static class IptvDocuments
                 writer.WriteString(channel.Number.ToString(CultureInfo.InvariantCulture));
                 writer.WriteEndElement();
 
+                // Without an icon the channel tile is a blank placeholder, so
+                // borrow the artwork of whatever it is showing first.
+                var logoId = slots
+                    .Select(s => s.Item.Metadata?.SeriesImageItemId)
+                    .FirstOrDefault(id => !string.IsNullOrEmpty(id));
+
+                if (!string.IsNullOrEmpty(baseUrl) && !string.IsNullOrEmpty(logoId))
+                {
+                    writer.WriteStartElement("icon");
+                    writer.WriteAttributeString(
+                        "src", ImageUrl(baseUrl.TrimEnd('/'), logoId, "Primary", 400));
+                    writer.WriteEndElement();
+                }
+
                 writer.WriteEndElement();
             }
 
@@ -92,24 +109,7 @@ public static class IptvDocuments
             {
                 foreach (var slot in slots)
                 {
-                    writer.WriteStartElement("programme");
-                    writer.WriteAttributeString("start", Stamp(slot.StartUtc));
-                    writer.WriteAttributeString("stop", Stamp(slot.EndUtc));
-                    writer.WriteAttributeString("channel", ChannelTvgId(channel));
-
-                    writer.WriteStartElement("title");
-                    writer.WriteAttributeString("lang", "en");
-                    writer.WriteString(slot.Item.Title);
-                    writer.WriteEndElement();
-
-                    // Jellyfin dedupes guide entries by title; without a unique
-                    // sub-title, repeats of the same episode collapse in the UI.
-                    writer.WriteStartElement("sub-title");
-                    writer.WriteAttributeString("lang", "en");
-                    writer.WriteString(Stamp(slot.StartUtc));
-                    writer.WriteEndElement();
-
-                    writer.WriteEndElement();
+                    WriteProgramme(writer, channel, slot, baseUrl);
                 }
             }
 
@@ -130,6 +130,131 @@ public static class IptvDocuments
         ArgumentNullException.ThrowIfNull(channel);
         return string.Create(CultureInfo.InvariantCulture, $"jellyvision.{channel.Id}");
     }
+
+    private static void WriteProgramme(
+        XmlWriter writer, ChannelConfig channel, ProgramSlot slot, string baseUrl)
+    {
+        var meta = slot.Item.Metadata;
+
+        writer.WriteStartElement("programme");
+        writer.WriteAttributeString("start", Stamp(slot.StartUtc));
+        writer.WriteAttributeString("stop", Stamp(slot.EndUtc));
+        writer.WriteAttributeString("channel", ChannelTvgId(channel));
+
+        // Title is the series (or movie) name; the episode name belongs in
+        // sub-title, which is what clients render as the second line.
+        var title = meta is null || string.IsNullOrEmpty(meta.SeriesName)
+            ? slot.Item.Title
+            : meta.SeriesName;
+
+        writer.WriteStartElement("title");
+        writer.WriteAttributeString("lang", "en");
+        writer.WriteString(title);
+        writer.WriteEndElement();
+
+        if (meta is not null && !string.IsNullOrEmpty(meta.SeriesName) &&
+            !string.IsNullOrEmpty(meta.EpisodeName))
+        {
+            writer.WriteStartElement("sub-title");
+            writer.WriteAttributeString("lang", "en");
+            writer.WriteString(meta.EpisodeName);
+            writer.WriteEndElement();
+        }
+
+        if (meta is not null && !string.IsNullOrEmpty(meta.Overview))
+        {
+            writer.WriteStartElement("desc");
+            writer.WriteAttributeString("lang", "en");
+            writer.WriteString(meta.Overview);
+            writer.WriteEndElement();
+        }
+
+        if (meta is not null)
+        {
+            foreach (var genre in meta.Genres)
+            {
+                writer.WriteStartElement("category");
+                writer.WriteAttributeString("lang", "en");
+                writer.WriteString(genre);
+                writer.WriteEndElement();
+            }
+
+            if (meta.SeasonNumber.HasValue && meta.EpisodeNumber.HasValue)
+            {
+                // xmltv_ns counts from zero and Jellyfin uses this to decide a
+                // programme is part of a series.
+                writer.WriteStartElement("episode-num");
+                writer.WriteAttributeString("system", "xmltv_ns");
+                writer.WriteString(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{meta.SeasonNumber.Value - 1}.{meta.EpisodeNumber.Value - 1}."));
+                writer.WriteEndElement();
+
+                writer.WriteStartElement("episode-num");
+                writer.WriteAttributeString("system", "onscreen");
+                writer.WriteString(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"S{meta.SeasonNumber.Value:00}E{meta.EpisodeNumber.Value:00}"));
+                writer.WriteEndElement();
+            }
+
+            if (meta.Year.HasValue)
+            {
+                writer.WriteStartElement("date");
+                writer.WriteString(meta.Year.Value.ToString(CultureInfo.InvariantCulture));
+                writer.WriteEndElement();
+            }
+
+            WriteArtwork(writer, meta, baseUrl);
+        }
+
+        writer.WriteEndElement();
+    }
+
+    private static void WriteArtwork(XmlWriter writer, ScheduleItemMetadata meta, string baseUrl)
+    {
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            return;
+        }
+
+        var root = baseUrl.TrimEnd('/');
+
+        // <icon> is what Jellyfin maps to ProgramInfo.ImageUrl, which is the
+        // tile artwork in the guide. Prefer the episode still, fall back to the
+        // series poster so a programme is never left with a blank tile.
+        var iconId = !string.IsNullOrEmpty(meta.PrimaryImageItemId)
+            ? meta.PrimaryImageItemId
+            : meta.SeriesImageItemId;
+
+        if (!string.IsNullOrEmpty(iconId))
+        {
+            writer.WriteStartElement("icon");
+            writer.WriteAttributeString("src", ImageUrl(root, iconId, "Primary", 600));
+            writer.WriteEndElement();
+        }
+
+        if (!string.IsNullOrEmpty(meta.SeriesImageItemId))
+        {
+            writer.WriteStartElement("image");
+            writer.WriteAttributeString("type", "backdrop");
+            writer.WriteString(ImageUrl(root, meta.SeriesImageItemId, "Backdrop", 1280));
+            writer.WriteEndElement();
+        }
+
+        if (!string.IsNullOrEmpty(meta.PrimaryImageItemId))
+        {
+            writer.WriteStartElement("image");
+            writer.WriteAttributeString("type", "still");
+            writer.WriteString(ImageUrl(root, meta.PrimaryImageItemId, "Primary", 600));
+            writer.WriteEndElement();
+        }
+    }
+
+    private static string ImageUrl(string root, string itemId, string type, int maxWidth)
+        => string.Create(
+            CultureInfo.InvariantCulture,
+            $"{root}/Items/{itemId}/Images/{type}?maxWidth={maxWidth}");
 
     private static string Stamp(DateTime utc)
         => utc.ToUniversalTime().ToString(XmltvTimeFormat, CultureInfo.InvariantCulture)

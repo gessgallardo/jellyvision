@@ -116,7 +116,7 @@ public class IptvController : ControllerBase
             listings.Add((channel, slots));
         }
 
-        return Content(IptvDocuments.BuildXmltv(listings), "application/xml");
+        return Content(IptvDocuments.BuildXmltv(listings, ResolveBaseUrl()), "application/xml");
     }
 
     /// <summary>
