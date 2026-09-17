@@ -193,6 +193,9 @@ public static class ScheduleEngine
             case ScheduleMode.BlockShuffle:
                 return BlockShuffle(playable, CycleSeed(seed, cycleIndex));
 
+            case ScheduleMode.RoundRobin:
+                return RoundRobin(playable);
+
             default:
                 return playable;
         }
@@ -224,6 +227,50 @@ public static class ScheduleEngine
         }
 
         return result;
+    }
+
+    private static List<ScheduleItem> RoundRobin(List<ScheduleItem> items)
+    {
+        var series = new List<List<ScheduleItem>>();
+        var index = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var item in items)
+        {
+            var key = string.IsNullOrEmpty(item.SeriesKey)
+                ? item.BlockKey
+                : item.SeriesKey;
+
+            if (!index.TryGetValue(key, out var position))
+            {
+                position = series.Count;
+                index[key] = position;
+                series.Add([]);
+            }
+
+            series[position].Add(item);
+        }
+
+        var result = new List<ScheduleItem>(items.Count);
+        var round = 0;
+        while (true)
+        {
+            var added = false;
+            foreach (var episodes in series)
+            {
+                if (round < episodes.Count)
+                {
+                    result.Add(episodes[round]);
+                    added = true;
+                }
+            }
+
+            if (!added)
+            {
+                return result;
+            }
+
+            round++;
+        }
     }
 
     private static void Shuffle<T>(IList<T> list, int seed)

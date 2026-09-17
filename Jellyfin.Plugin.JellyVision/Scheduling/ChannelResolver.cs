@@ -82,11 +82,16 @@ public class ChannelResolver
             _ => item.Id.ToString("N"),
         };
 
+        var seriesKey = item is Episode episodeWithSeries && episodeWithSeries.SeriesId != Guid.Empty
+            ? episodeWithSeries.SeriesId.ToString("N")
+            : item.Id.ToString("N");
+
         return new ScheduleItem(
             item.Id.ToString("N"),
             title ?? string.Empty,
             TimeSpan.FromTicks(item.RunTimeTicks ?? 0),
-            blockKey);
+            blockKey,
+            seriesKey);
     }
 
     private IEnumerable<BaseItem> Expand(ChannelSource source)

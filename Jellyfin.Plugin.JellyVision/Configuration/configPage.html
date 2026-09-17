@@ -39,6 +39,7 @@
                         <option value="0">Sequential (S01E01, S01E02, ...)</option>
                         <option value="1">Shuffle</option>
                         <option value="2">Block shuffle (whole seasons, in order)</option>
+                        <option value="3">Round robin (one episode per series)</option>
                     </select>
                 </div>
 
@@ -158,7 +159,7 @@
             }
 
             function modeName(mode) {
-                return ['Sequential', 'Shuffle', 'Block shuffle'][mode] || 'Sequential';
+                return ['Sequential', 'Shuffle', 'Block shuffle', 'Round robin'][mode] || 'Sequential';
             }
 
             function renderList() {
