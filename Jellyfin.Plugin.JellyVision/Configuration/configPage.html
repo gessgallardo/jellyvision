@@ -123,6 +123,16 @@
                 </button>
             </form>
 
+            <h3>Guide</h3>
+            <p>
+                Jellyfin caches the programme guide, so edits to a channel are not
+                visible in Live TV until the guide is refreshed.
+            </p>
+            <button is="emby-button" type="button" id="jvRefreshGuide" class="raised emby-button">
+                <span>Refresh guide now</span>
+            </button>
+            <span id="jvRefreshStatus" style="margin-left:1em;opacity:.8;"></span>
+
             <h3>Live TV setup</h3>
             <p>Dashboard &rarr; Live TV &rarr; Add tuner device &rarr; <strong>M3U Tuner</strong>:</p>
             <p><code id="jvM3u"></code></p>
@@ -148,7 +158,7 @@
                     contentType: 'application/json'
                 };
                 if (body) { opts.data = JSON.stringify(body); }
-                if (!method || method === 'GET' || method === 'POST') { opts.dataType = 'json'; }
+                if (!method || method === 'GET') { opts.dataType = 'json'; }
                 return ApiClient.ajax(opts);
             }
 
@@ -158,8 +168,22 @@
                 });
             }
 
+            var MODES = ['Sequential', 'Shuffle', 'BlockShuffle', 'RoundRobin'];
+            var KINDS = ['Series', 'Movie', 'Collection', 'Playlist', 'Filter'];
+
+            // The plugin configuration endpoint serialises enums as NAMES
+            // ("Sequential"), while the editor's <select> works in numbers.
+            // Normalise both directions or the dropdown silently resets to the
+            // first option and saving writes the wrong mode back.
+            function toNumber(value, names) {
+                if (typeof value === 'number') { return value; }
+                var i = names.indexOf(String(value));
+                return i < 0 ? 0 : i;
+            }
+
             function modeName(mode) {
-                return ['Sequential', 'Shuffle', 'Block shuffle', 'Round robin'][mode] || 'Sequential';
+                return ['Sequential', 'Shuffle', 'Block shuffle', 'Round robin'][toNumber(mode, MODES)] ||
+                    'Sequential';
             }
 
             function renderList() {
@@ -197,6 +221,8 @@
                 var found = (config.Channels || []).filter(function (c) { return c.Id === id; })[0];
                 editing = JSON.parse(JSON.stringify(found));
                 if (!editing.Sources) { editing.Sources = []; }
+                editing.Mode = toNumber(editing.Mode, MODES);
+                editing.Sources.forEach(function (s) { s.Kind = toNumber(s.Kind, KINDS); });
                 showEditor();
             }
 
@@ -349,6 +375,10 @@
                 api('Manage/Channels', 'POST', dto).then(function () {
                     return reload();
                 }).then(function () {
+                    // Push the change into Jellyfin's guide cache straight away,
+                    // otherwise Live TV keeps showing the old schedule.
+                    return refreshGuide(true);
+                }).then(function () {
                     Dashboard.hideLoadingMsg();
                     hideEditor();
                 }, function () {
@@ -395,6 +425,19 @@
                 reload().then(function () { Dashboard.hideLoadingMsg(); });
             });
 
+            function refreshGuide(silent) {
+                var status = el('#jvRefreshStatus');
+                if (!silent) { status.textContent = 'Refreshing...'; }
+                return api('Manage/RefreshGuide', 'POST').then(function () {
+                    status.textContent = 'Guide refresh queued. It may take a few seconds ' +
+                        'to appear in Live TV.';
+                    setTimeout(function () { status.textContent = ''; }, 8000);
+                }, function () {
+                    status.textContent = 'Could not refresh the guide.';
+                });
+            }
+
+            el('#jvRefreshGuide').addEventListener('click', function () { refreshGuide(false); });
             el('#jvAddChannel').addEventListener('click', addChannel);
             el('#jvCancel').addEventListener('click', hideEditor);
             el('#jvSave').addEventListener('click', save);

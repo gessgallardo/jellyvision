@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.JellyVision.Configuration;
 
 namespace Jellyfin.Plugin.JellyVision.Api;
 
@@ -31,7 +32,13 @@ public class ChannelSaveDto
     /// <summary>
     /// Gets or sets the ordering mode.
     /// </summary>
-    public int Mode { get; set; }
+    /// <remarks>
+    /// Typed as the enum, not an int, so the payload may use either the name
+    /// ("Sequential") or the number (0). The plugin configuration endpoint
+    /// serialises enums as names, so a UI that round-trips a channel sends
+    /// names back.
+    /// </remarks>
+    public ScheduleMode Mode { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether tuning in joins mid-programme.

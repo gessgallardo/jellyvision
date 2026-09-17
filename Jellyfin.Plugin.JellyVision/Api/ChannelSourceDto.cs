@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Jellyfin.Plugin.JellyVision.Configuration;
 
 namespace Jellyfin.Plugin.JellyVision.Api;
 
@@ -10,7 +11,11 @@ public class ChannelSourceDto
     /// <summary>
     /// Gets or sets the source kind.
     /// </summary>
-    public int Kind { get; set; }
+    /// <remarks>
+    /// Typed as the enum so the payload may use either the name ("Series") or
+    /// the number (0); see <see cref="ChannelSaveDto.Mode"/>.
+    /// </remarks>
+    public SourceKind Kind { get; set; }
 
     /// <summary>
     /// Gets or sets the library item id, for item-based kinds.

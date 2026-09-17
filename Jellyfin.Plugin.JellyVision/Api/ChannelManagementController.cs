@@ -5,6 +5,7 @@ using System.Linq;
 using Jellyfin.Plugin.JellyVision.Configuration;
 using Jellyfin.Plugin.JellyVision.Scheduling;
 using MediaBrowser.Common.Api;
+using MediaBrowser.Model.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,14 +22,17 @@ namespace Jellyfin.Plugin.JellyVision.Api;
 public class ChannelManagementController : ControllerBase
 {
     private readonly ChannelResolver _resolver;
+    private readonly ITaskManager _taskManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChannelManagementController"/> class.
     /// </summary>
     /// <param name="resolver">The channel resolver.</param>
-    public ChannelManagementController(ChannelResolver resolver)
+    /// <param name="taskManager">The scheduled task manager, used to refresh the guide.</param>
+    public ChannelManagementController(ChannelResolver resolver, ITaskManager taskManager)
     {
         _resolver = resolver;
+        _taskManager = taskManager;
     }
 
     /// <summary>
@@ -72,7 +76,7 @@ public class ChannelManagementController : ControllerBase
         channel.Name = dto.Name.Trim();
         channel.Number = dto.Number > 0 ? dto.Number : NextNumber(config, channel);
         channel.Enabled = dto.Enabled;
-        channel.Mode = (ScheduleMode)dto.Mode;
+        channel.Mode = dto.Mode;
         channel.LiveWallClock = dto.LiveWallClock;
 
         if (dto.AnchorUtc.HasValue)
@@ -83,7 +87,7 @@ public class ChannelManagementController : ControllerBase
         channel.Sources = dto.Sources
             .Select(s => new ChannelSource
             {
-                Kind = (SourceKind)s.Kind,
+                Kind = s.Kind,
                 ItemId = s.ItemId,
                 Label = s.Label,
                 Genres = [.. s.Genres],
@@ -143,12 +147,12 @@ public class ChannelManagementController : ControllerBase
         {
             Id = string.IsNullOrEmpty(dto.Id) ? "preview" : dto.Id,
             Name = dto.Name,
-            Mode = (ScheduleMode)dto.Mode,
+            Mode = dto.Mode,
             LiveWallClock = dto.LiveWallClock,
             Sources = dto.Sources
                 .Select(s => new ChannelSource
                 {
-                    Kind = (SourceKind)s.Kind,
+                    Kind = s.Kind,
                     ItemId = s.ItemId,
                     Label = s.Label,
                     Genres = [.. s.Genres],
@@ -184,6 +188,37 @@ public class ChannelManagementController : ControllerBase
             items.Count,
             TimeSpan.FromTicks(totalTicks).TotalHours,
             entries));
+    }
+
+    /// <summary>
+    /// Asks Jellyfin to re-read the XMLTV guide.
+    /// </summary>
+    /// <remarks>
+    /// Jellyfin caches guide data; editing a channel changes what JellyVision
+    /// serves but the Live TV UI keeps showing the old listings until the
+    /// "Refresh Guide" scheduled task runs (every few hours by default). This
+    /// queues that task so a channel edit is visible straight away.
+    /// Note that <c>POST /LiveTv/Guide/Refresh</c> does not exist on 10.11;
+    /// the scheduled task is the supported route.
+    /// </remarks>
+    /// <returns>No content.</returns>
+    [HttpPost("RefreshGuide")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult RefreshGuide()
+    {
+        // The guide task lives in Jellyfin.LiveTv, which plugins do not
+        // reference, so it is located by key rather than by type.
+        var task = _taskManager.ScheduledTasks.FirstOrDefault(
+            t => string.Equals(t.ScheduledTask.Key, "RefreshGuide", StringComparison.Ordinal));
+
+        if (task is null)
+        {
+            return NotFound("The Refresh Guide task was not found.");
+        }
+
+        _taskManager.Execute(task, new TaskOptions());
+        return NoContent();
     }
 
     private static int NextNumber(PluginConfiguration config, ChannelConfig self)

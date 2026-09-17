@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.4.1.0",
+        "changelog": "Fix channel edits resetting the schedule mode; add a guide refresh button.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.4.1.0/jellyvision_0.4.1.0.zip",
+        "checksum": "48237a58c9248b1aaf6a852845b1f375",
+        "timestamp": "2026-09-17T20:54:15Z"
+      },
+      {
         "version": "0.4.0.0",
         "changelog": "Round-robin scheduling: one episode per series before advancing.",
         "targetAbi": "10.11.0.0",
