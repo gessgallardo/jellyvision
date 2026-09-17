@@ -43,7 +43,7 @@ public class ChannelStreamer
 
     private readonly ILibraryManager _libraryManager;
     private readonly IMediaEncoder _mediaEncoder;
-    private readonly ChannelResolver _resolver;
+    private readonly ChannelTimeline _timeline;
     private readonly ILogger<ChannelStreamer> _logger;
 
     /// <summary>
@@ -51,17 +51,17 @@ public class ChannelStreamer
     /// </summary>
     /// <param name="libraryManager">The library manager.</param>
     /// <param name="mediaEncoder">The media encoder, used for the ffmpeg path.</param>
-    /// <param name="resolver">The channel resolver.</param>
+    /// <param name="timeline">Builds the channel's item list, filler included.</param>
     /// <param name="logger">The logger.</param>
     public ChannelStreamer(
         ILibraryManager libraryManager,
         IMediaEncoder mediaEncoder,
-        ChannelResolver resolver,
+        ChannelTimeline timeline,
         ILogger<ChannelStreamer> logger)
     {
         _libraryManager = libraryManager;
         _mediaEncoder = mediaEncoder;
-        _resolver = resolver;
+        _timeline = timeline;
         _logger = logger;
     }
 
@@ -80,7 +80,7 @@ public class ChannelStreamer
         ArgumentNullException.ThrowIfNull(channel);
         ArgumentNullException.ThrowIfNull(output);
 
-        var items = _resolver.Resolve(channel);
+        var items = _timeline.Build(channel);
         if (items.Count == 0)
         {
             _logger.LogWarning("Channel {Channel} has no playable items", channel.Name);

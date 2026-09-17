@@ -9,4 +9,10 @@ namespace Jellyfin.Plugin.JellyVision.Api;
 /// <param name="Title">The programme title.</param>
 /// <param name="StartUtc">Start time.</param>
 /// <param name="EndUtc">End time.</param>
-public record GuideEntryDto(string ItemId, string Title, DateTime StartUtc, DateTime EndUtc);
+/// <param name="IsFiller">True for a bumper or ident rather than a programme.</param>
+public record GuideEntryDto(
+    string ItemId,
+    string Title,
+    DateTime StartUtc,
+    DateTime EndUtc,
+    bool IsFiller = false);

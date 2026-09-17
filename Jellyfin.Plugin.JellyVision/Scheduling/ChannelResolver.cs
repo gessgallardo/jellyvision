@@ -70,6 +70,44 @@ public class ChannelResolver
         return items;
     }
 
+    /// <summary>
+    /// Resolves the filler pool for a channel: bumpers, idents and the like.
+    /// </summary>
+    /// <param name="channel">The channel.</param>
+    /// <returns>The filler items, marked so the guide can ignore them.</returns>
+    public IReadOnlyList<ScheduleItem> ResolveFiller(ChannelConfig channel)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+
+        if (channel.Filler.Mode == FillerMode.None || channel.Filler.Sources.Count == 0)
+        {
+            return [];
+        }
+
+        var items = new List<ScheduleItem>();
+        var seen = new HashSet<Guid>();
+
+        foreach (var source in channel.Filler.Sources)
+        {
+            foreach (var item in Expand(source))
+            {
+                if (item.RunTimeTicks is null or <= 0 || !seen.Add(item.Id))
+                {
+                    continue;
+                }
+
+                items.Add(ToScheduleItem(item) with { IsFiller = true });
+            }
+        }
+
+        _logger.LogDebug(
+            "Resolved {Count} filler items for channel {Channel}",
+            items.Count,
+            channel.Name);
+
+        return items;
+    }
+
     private static ScheduleItem ToScheduleItem(BaseItem item)
     {
         var title = item is Episode episode

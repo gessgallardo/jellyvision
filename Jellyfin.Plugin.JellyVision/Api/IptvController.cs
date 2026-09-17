@@ -29,17 +29,17 @@ namespace Jellyfin.Plugin.JellyVision.Api;
 [Route("JellyVision/iptv")]
 public class IptvController : ControllerBase
 {
-    private readonly ChannelResolver _resolver;
+    private readonly ChannelTimeline _timeline;
     private readonly ChannelSessionManager _sessions;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IptvController"/> class.
     /// </summary>
-    /// <param name="resolver">The channel resolver.</param>
+    /// <param name="timeline">Builds each channel's item list.</param>
     /// <param name="sessions">The shared channel session manager.</param>
-    public IptvController(ChannelResolver resolver, ChannelSessionManager sessions)
+    public IptvController(ChannelTimeline timeline, ChannelSessionManager sessions)
     {
-        _resolver = resolver;
+        _timeline = timeline;
         _sessions = sessions;
     }
 
@@ -88,16 +88,8 @@ public class IptvController : ControllerBase
         var logos = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var channel in Config.Channels.Where(c => c.Enabled))
         {
-            var items = _resolver.Resolve(channel);
-            var current = ScheduleEngine.GetCurrent(
-                items,
-                channel.Mode,
-                channel.AnchorUtc,
-                DateTime.UtcNow,
-                ScheduleEngine.SeedFor(channel.Id),
-                out _);
-
-            var logoId = current?.Item.Metadata?.SeriesImageItemId;
+            var guide = _timeline.BuildGuide(channel, DateTime.UtcNow, TimeSpan.FromHours(3));
+            var logoId = guide.Count > 0 ? guide[0].Item.Metadata?.SeriesImageItemId : null;
             if (!string.IsNullOrEmpty(logoId))
             {
                 logos[channel.Id] = logoId;
@@ -124,16 +116,7 @@ public class IptvController : ControllerBase
         var listings = new List<(ChannelConfig, IReadOnlyList<ProgramSlot>)>();
         foreach (var channel in Config.Channels.Where(c => c.Enabled))
         {
-            var items = _resolver.Resolve(channel);
-            var slots = ScheduleEngine.GetGuide(
-                items,
-                channel.Mode,
-                channel.AnchorUtc,
-                nowUtc,
-                window,
-                ScheduleEngine.SeedFor(channel.Id));
-
-            listings.Add((channel, slots));
+            listings.Add((channel, _timeline.BuildGuide(channel, nowUtc, window)));
         }
 
         return Content(IptvDocuments.BuildXmltv(listings, ResolveBaseUrl()), "application/xml");

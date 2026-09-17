@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.7.0.0",
+        "changelog": "Filler: bumpers and idents between programmes, hidden from the guide.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.7.0.0/jellyvision_0.7.0.0.zip",
+        "checksum": "7ba1fcd4d779153b5691dd783be77319",
+        "timestamp": "2026-09-17T22:17:37Z"
+      },
+      {
         "version": "0.6.1.0",
         "changelog": "Repeat H.264 headers so mid-stream joiners decode; stop leaking viewer counts.",
         "targetAbi": "10.11.0.0",

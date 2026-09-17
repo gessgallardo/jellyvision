@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.JellyVision.Api;
 [Produces(System.Net.Mime.MediaTypeNames.Application.Json)]
 public class ChannelManagementController : ControllerBase
 {
-    private readonly ChannelResolver _resolver;
+    private readonly ChannelTimeline _timeline;
     private readonly ITaskManager _taskManager;
     private readonly IApplicationPaths _appPaths;
     private readonly ILogger<ChannelManagementController> _logger;
@@ -32,17 +32,17 @@ public class ChannelManagementController : ControllerBase
     /// <summary>
     /// Initializes a new instance of the <see cref="ChannelManagementController"/> class.
     /// </summary>
-    /// <param name="resolver">The channel resolver.</param>
+    /// <param name="timeline">Builds each channel's item list.</param>
     /// <param name="taskManager">The scheduled task manager, used to refresh the guide.</param>
     /// <param name="appPaths">Application paths, used to clear the cached guide.</param>
     /// <param name="logger">The logger.</param>
     public ChannelManagementController(
-        ChannelResolver resolver,
+        ChannelTimeline timeline,
         ITaskManager taskManager,
         IApplicationPaths appPaths,
         ILogger<ChannelManagementController> logger)
     {
-        _resolver = resolver;
+        _timeline = timeline;
         _taskManager = taskManager;
         _appPaths = appPaths;
         _logger = logger;
@@ -97,6 +97,13 @@ public class ChannelManagementController : ControllerBase
             channel.AnchorUtc = DateTime.SpecifyKind(dto.AnchorUtc.Value, DateTimeKind.Utc);
         }
 
+        channel.Filler = new FillerConfig
+        {
+            Mode = dto.FillerMode,
+            CountBetweenProgrammes = Math.Clamp(dto.FillerCount, 1, 10),
+            Sources = [.. dto.FillerSources.Select(ToSource)],
+        };
+
         channel.Sources = dto.Sources
             .Select(s => new ChannelSource
             {
@@ -112,7 +119,7 @@ public class ChannelManagementController : ControllerBase
 
         plugin.UpdateConfiguration(config);
 
-        return Ok(new ChannelSavedDto(channel.Id, _resolver.Resolve(channel).Count));
+        return Ok(new ChannelSavedDto(channel.Id, _timeline.CountProgrammes(channel)));
     }
 
     /// <summary>
@@ -162,18 +169,13 @@ public class ChannelManagementController : ControllerBase
             Name = dto.Name,
             Mode = dto.Mode,
             LiveWallClock = dto.LiveWallClock,
-            Sources = dto.Sources
-                .Select(s => new ChannelSource
-                {
-                    Kind = s.Kind,
-                    ItemId = s.ItemId,
-                    Label = s.Label,
-                    Genres = [.. s.Genres],
-                    Tags = [.. s.Tags],
-                    IncludeEpisodes = s.IncludeEpisodes,
-                    IncludeMovies = s.IncludeMovies,
-                })
-                .ToList(),
+            Sources = [.. dto.Sources.Select(ToSource)],
+            Filler = new FillerConfig
+            {
+                Mode = dto.FillerMode,
+                CountBetweenProgrammes = Math.Clamp(dto.FillerCount, 1, 10),
+                Sources = [.. dto.FillerSources.Select(ToSource)],
+            },
         };
 
         if (dto.AnchorUtc.HasValue)
@@ -181,7 +183,7 @@ public class ChannelManagementController : ControllerBase
             channel.AnchorUtc = DateTime.SpecifyKind(dto.AnchorUtc.Value, DateTimeKind.Utc);
         }
 
-        var items = _resolver.Resolve(channel);
+        var items = _timeline.Build(channel);
         var totalTicks = items.Sum(i => i.Duration.Ticks);
 
         var slots = ScheduleEngine.GetGuide(
@@ -194,7 +196,8 @@ public class ChannelManagementController : ControllerBase
 
         var entries = slots
             .Take(12)
-            .Select(s => new GuideEntryDto(s.Item.ItemId, s.Item.Title, s.StartUtc, s.EndUtc))
+            .Select(s => new GuideEntryDto(
+                s.Item.ItemId, s.Item.Title, s.StartUtc, s.EndUtc, s.Item.IsFiller))
             .ToList();
 
         return Ok(new ChannelPreviewDto(
@@ -266,6 +269,18 @@ public class ChannelManagementController : ControllerBase
             _logger.LogWarning(ex, "Could not clear the XMLTV cache");
         }
     }
+
+    private static ChannelSource ToSource(ChannelSourceDto s)
+        => new()
+        {
+            Kind = s.Kind,
+            ItemId = s.ItemId,
+            Label = s.Label,
+            Genres = [.. s.Genres],
+            Tags = [.. s.Tags],
+            IncludeEpisodes = s.IncludeEpisodes,
+            IncludeMovies = s.IncludeMovies,
+        };
 
     private static int NextNumber(PluginConfiguration config, ChannelConfig self)
     {

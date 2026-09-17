@@ -135,6 +135,57 @@ public static class ScheduleEngine
     }
 
     /// <summary>
+    /// Interleaves filler between programmes, deterministically.
+    /// </summary>
+    /// <remarks>
+    /// Done here rather than inside the ordering so the result is still a plain
+    /// item list: every downstream calculation (cycle length, current
+    /// programme, guide) keeps working unchanged, and the schedule stays a pure
+    /// function of its inputs. Filler is drawn round-robin from the pool with a
+    /// rotating start, so the same bumper does not lead every break.
+    /// </remarks>
+    /// <param name="items">The programme list.</param>
+    /// <param name="filler">The filler pool.</param>
+    /// <param name="countBetween">How many filler items play between programmes.</param>
+    /// <returns>The combined list.</returns>
+    public static IReadOnlyList<ScheduleItem> Interleave(
+        IReadOnlyList<ScheduleItem> items,
+        IReadOnlyList<ScheduleItem> filler,
+        int countBetween)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(filler);
+
+        if (filler.Count == 0 || countBetween <= 0 || items.Count == 0)
+        {
+            return items;
+        }
+
+        var result = new List<ScheduleItem>(items.Count * (1 + countBetween));
+        var fillerIndex = 0;
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            result.Add(items[i]);
+
+            // No trailing break: the last programme runs straight into the
+            // first of the next cycle, which is where the next break lands.
+            if (i == items.Count - 1)
+            {
+                break;
+            }
+
+            for (var f = 0; f < countBetween; f++)
+            {
+                result.Add(filler[fillerIndex % filler.Count]);
+                fillerIndex++;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Derives a stable integer seed from a channel id.
     /// </summary>
     /// <param name="channelId">The channel id.</param>

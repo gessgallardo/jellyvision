@@ -54,4 +54,19 @@ public class ChannelSaveDto
     /// Gets or sets the channel's sources.
     /// </summary>
     public IReadOnlyList<ChannelSourceDto> Sources { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets where filler is inserted.
+    /// </summary>
+    public FillerMode FillerMode { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many filler items play between programmes.
+    /// </summary>
+    public int FillerCount { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the sources filler is drawn from.
+    /// </summary>
+    public IReadOnlyList<ChannelSourceDto> FillerSources { get; set; } = [];
 }

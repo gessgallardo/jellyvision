@@ -49,4 +49,9 @@ public class ChannelConfig
     /// Gets or sets the sources feeding this channel.
     /// </summary>
     public List<ChannelSource> Sources { get; set; } = new List<ChannelSource>();
+
+    /// <summary>
+    /// Gets or sets the filler played between programmes.
+    /// </summary>
+    public FillerConfig Filler { get; set; } = new FillerConfig();
 }

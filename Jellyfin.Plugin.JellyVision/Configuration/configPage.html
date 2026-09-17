@@ -85,6 +85,36 @@
                     </button>
                 </details>
 
+                <h4>Filler</h4>
+                <p style="opacity:.7;margin-top:-.4em;">
+                    Bumpers, idents or fake commercials played between programmes.
+                    They are not listed in the guide.
+                </p>
+
+                <div class="selectContainer">
+                    <label class="selectLabel" for="jvFillerMode">Filler</label>
+                    <select is="emby-select" id="jvFillerMode">
+                        <option value="0">Off</option>
+                        <option value="1">Between programmes</option>
+                    </select>
+                </div>
+
+                <div id="jvFillerOptions" style="display:none;">
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="jvFillerCount">How many between programmes</label>
+                        <input is="emby-input" type="number" id="jvFillerCount" min="1" max="10" />
+                    </div>
+
+                    <div id="jvFillerSources"></div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="jvFillerSearch">Add filler content</label>
+                        <input is="emby-input" type="text" id="jvFillerSearch"
+                               placeholder="Search for a bumpers collection, playlist or short..." />
+                        <div id="jvFillerResults"></div>
+                    </div>
+                </div>
+
                 <div id="jvPreview" style="margin: 1em 0; opacity: .85;"></div>
 
                 <div>
@@ -148,6 +178,7 @@
             var editing = null;
             var config = null;
             var searchTimer = null;
+            var fillerTimer = null;
 
             function el(id) { return page.querySelector(id); }
 
@@ -169,6 +200,7 @@
             }
 
             var MODES = ['Sequential', 'Shuffle', 'BlockShuffle', 'RoundRobin'];
+            var FILLER_MODES = ['None', 'BetweenProgrammes'];
             var KINDS = ['Series', 'Movie', 'Collection', 'Playlist', 'Filter'];
 
             // The plugin configuration endpoint serialises enums as NAMES
@@ -223,13 +255,26 @@
                 if (!editing.Sources) { editing.Sources = []; }
                 editing.Mode = toNumber(editing.Mode, MODES);
                 editing.Sources.forEach(function (s) { s.Kind = toNumber(s.Kind, KINDS); });
+
+                var filler = editing.Filler || {};
+                editing.FillerMode = toNumber(filler.Mode || 0, FILLER_MODES);
+                editing.FillerCount = filler.CountBetweenProgrammes || 1;
+                editing.FillerSources = (filler.Sources || []).map(function (s) {
+                    return {
+                        Kind: toNumber(s.Kind, KINDS), ItemId: s.ItemId, Label: s.Label,
+                        Genres: s.Genres || [], Tags: s.Tags || [],
+                        IncludeEpisodes: s.IncludeEpisodes !== false,
+                        IncludeMovies: s.IncludeMovies !== false
+                    };
+                });
                 showEditor();
             }
 
             function addChannel() {
                 editing = {
                     Id: '', Number: 0, Name: '', Enabled: true,
-                    Mode: 0, LiveWallClock: true, Sources: []
+                    Mode: 0, LiveWallClock: true, Sources: [],
+                    FillerMode: 0, FillerCount: 1, FillerSources: []
                 };
                 showEditor();
             }
@@ -244,7 +289,13 @@
                 el('#jvPreview').innerHTML = '';
                 el('#jvSearch').value = '';
                 el('#jvSearchResults').innerHTML = '';
+                el('#jvFillerMode').value = String(editing.FillerMode || 0);
+                el('#jvFillerCount').value = editing.FillerCount || 1;
+                el('#jvFillerSearch').value = '';
+                el('#jvFillerResults').innerHTML = '';
                 renderSources();
+                renderFillerSources();
+                syncFillerVisibility();
                 el('#jvEditor').style.display = 'block';
             }
 
@@ -276,6 +327,74 @@
                     b.addEventListener('click', function () {
                         editing.Sources.splice(parseInt(this.getAttribute('data-i'), 10), 1);
                         renderSources();
+                    });
+                });
+            }
+
+            function syncFillerVisibility() {
+                el('#jvFillerOptions').style.display =
+                    el('#jvFillerMode').value === '0' ? 'none' : 'block';
+            }
+
+            function renderFillerSources() {
+                var host = el('#jvFillerSources');
+                var list = editing.FillerSources || [];
+                if (!list.length) {
+                    host.innerHTML = '<p style="opacity:.6;">No filler content yet.</p>';
+                    return;
+                }
+                host.innerHTML = list.map(function (s, i) {
+                    return '<div style="display:flex;align-items:center;gap:1em;padding:.25em 0;">' +
+                        '<span style="flex:1;">' + escapeHtml(s.Label || describeFilter(s)) + '</span>' +
+                        '<button is="emby-button" type="button" class="raised emby-button jvRemoveFiller" data-i="' + i + '">Remove</button>' +
+                        '</div>';
+                }).join('');
+                Array.prototype.forEach.call(host.querySelectorAll('.jvRemoveFiller'), function (b) {
+                    b.addEventListener('click', function () {
+                        editing.FillerSources.splice(parseInt(this.getAttribute('data-i'), 10), 1);
+                        renderFillerSources();
+                    });
+                });
+            }
+
+            function searchFiller(term) {
+                if (!term || term.length < 2) {
+                    el('#jvFillerResults').innerHTML = '';
+                    return;
+                }
+                ApiClient.getJSON(ApiClient.getUrl('Items', {
+                    IncludeItemTypes: 'Series,Movie,BoxSet,Playlist',
+                    Recursive: true, Limit: 12, SortBy: 'SortName',
+                    Fields: 'ProductionYear', searchTerm: term
+                })).then(function (result) {
+                    var host = el('#jvFillerResults');
+                    if (!result.Items.length) {
+                        host.innerHTML = '<p style="opacity:.6;">Nothing found.</p>';
+                        return;
+                    }
+                    host.innerHTML = result.Items.map(function (i) {
+                        return '<div style="display:flex;align-items:center;gap:1em;padding:.25em 0;">' +
+                            '<span style="flex:1;">' + escapeHtml(i.Name) +
+                            ' <span style="opacity:.6;">' + i.Type + '</span></span>' +
+                            '<button is="emby-button" type="button" class="raised emby-button jvPickFiller" ' +
+                            'data-id="' + i.Id + '" data-type="' + i.Type + '" ' +
+                            'data-name="' + escapeHtml(i.Name) + '">Add</button></div>';
+                    }).join('');
+
+                    Array.prototype.forEach.call(host.querySelectorAll('.jvPickFiller'), function (b) {
+                        b.addEventListener('click', function () {
+                            if (!editing.FillerSources) { editing.FillerSources = []; }
+                            editing.FillerSources.push({
+                                Kind: kindFor(this.getAttribute('data-type')),
+                                ItemId: this.getAttribute('data-id'),
+                                Label: this.getAttribute('data-name'),
+                                Genres: [], Tags: [],
+                                IncludeEpisodes: true, IncludeMovies: true
+                            });
+                            renderFillerSources();
+                            el('#jvFillerSearch').value = '';
+                            host.innerHTML = '';
+                        });
                     });
                 });
             }
@@ -341,7 +460,10 @@
                     Enabled: el('#jvEnabled').checked,
                     Mode: parseInt(el('#jvMode').value, 10),
                     LiveWallClock: el('#jvLive').checked,
-                    Sources: editing.Sources
+                    Sources: editing.Sources,
+                    FillerMode: parseInt(el('#jvFillerMode').value, 10),
+                    FillerCount: parseInt(el('#jvFillerCount').value, 10) || 1,
+                    FillerSources: editing.FillerSources || []
                 };
             }
 
@@ -355,8 +477,11 @@
                 api('Manage/Preview', 'POST', dto).then(function (res) {
                     var r = typeof res === 'string' ? JSON.parse(res) : res;
                     var rows = r.Upcoming.map(function (u) {
-                        return '<div>' + new Date(u.StartUtc).toLocaleTimeString() + ' &mdash; ' +
-                            escapeHtml(u.Title) + '</div>';
+                        var filler = u.IsFiller
+                            ? ' <span style="opacity:.55;">(filler)</span>' : '';
+                        return '<div' + (u.IsFiller ? ' style="opacity:.7;"' : '') + '>' +
+                            new Date(u.StartUtc).toLocaleTimeString() + ' &mdash; ' +
+                            escapeHtml(u.Title) + filler + '</div>';
                     }).join('');
                     el('#jvPreview').innerHTML =
                         '<p><strong>' + r.ItemCount + ' items</strong>, ' +
@@ -447,6 +572,14 @@
                 var term = this.value;
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(function () { search(term); }, 300);
+            });
+
+            el('#jvFillerMode').addEventListener('change', syncFillerVisibility);
+
+            el('#jvFillerSearch').addEventListener('input', function () {
+                var term = this.value;
+                clearTimeout(fillerTimer);
+                fillerTimer = setTimeout(function () { searchFiller(term); }, 300);
             });
 
             el('#jvAddFilter').addEventListener('click', function () {

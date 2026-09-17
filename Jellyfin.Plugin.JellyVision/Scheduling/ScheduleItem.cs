@@ -12,10 +12,12 @@ namespace Jellyfin.Plugin.JellyVision.Scheduling;
 /// <param name="BlockKey">Grouping key used by block shuffle (for example season id).</param>
 /// <param name="SeriesKey">Grouping key used by round-robin scheduling.</param>
 /// <param name="Metadata">Optional guide metadata (artwork, overview, numbering).</param>
+/// <param name="IsFiller">True for bumpers and idents, which play but are not listed in the guide.</param>
 public record struct ScheduleItem(
     string ItemId,
     string Title,
     TimeSpan Duration,
     string BlockKey,
     string SeriesKey = "",
-    ScheduleItemMetadata? Metadata = null);
+    ScheduleItemMetadata? Metadata = null,
+    bool IsFiller = false);
