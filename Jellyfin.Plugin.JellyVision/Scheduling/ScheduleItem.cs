@@ -10,4 +10,10 @@ namespace Jellyfin.Plugin.JellyVision.Scheduling;
 /// <param name="Title">Display title.</param>
 /// <param name="Duration">Run time.</param>
 /// <param name="BlockKey">Grouping key used by block shuffle (for example season id).</param>
-public record struct ScheduleItem(string ItemId, string Title, TimeSpan Duration, string BlockKey);
+/// <param name="SeriesKey">Grouping key used by round-robin scheduling.</param>
+public record struct ScheduleItem(
+    string ItemId,
+    string Title,
+    TimeSpan Duration,
+    string BlockKey,
+    string SeriesKey = "");

@@ -13,4 +13,7 @@ public enum ScheduleMode
 
     /// <summary>Shuffle whole blocks (a season or a series), keeping each block in order.</summary>
     BlockShuffle = 2,
+
+    /// <summary>Play one episode from each series before advancing to the next episode.</summary>
+    RoundRobin = 3,
 }
