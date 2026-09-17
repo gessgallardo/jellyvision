@@ -79,11 +79,20 @@ public sealed class ChannelSessionManager : IDisposable
                 }
 
                 await output.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+
+                // A client that vanished without a clean close only shows up as
+                // a failing flush; without this the viewer count leaks and the
+                // encoder never shuts down.
+                await output.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
         {
             // Client went away.
+        }
+        catch (IOException ex)
+        {
+            _logger.LogDebug(ex, "Viewer of {Channel} disconnected", channel.Name);
         }
         finally
         {
@@ -96,7 +105,13 @@ public sealed class ChannelSessionManager : IDisposable
             }
 
             // Last one out turns off the encoder.
-            if (session.Release() == 0)
+            var remaining = session.Release();
+            _logger.LogInformation(
+                "Client left channel {Channel}; {Count} viewer(s) remaining",
+                channel.Name,
+                remaining);
+
+            if (remaining <= 0)
             {
                 _sessions.TryRemove(channel.Id, out _);
                 session.Dispose();

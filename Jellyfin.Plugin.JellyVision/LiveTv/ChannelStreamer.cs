@@ -227,6 +227,10 @@ public class ChannelStreamer
             $"-f concat -safe 0 -i \"{listPath}\" " +
             $"-map 0:v:0 -map 0:a:0? " +
             $"-c:v libx264 -preset veryfast -tune zerolatency " +
+            // Repeat SPS/PPS with every keyframe. A live viewer joins
+            // mid-stream and never sees the initial headers, so without this
+            // the decoder reports "non-existing PPS" and shows nothing.
+            $"-x264-params repeat-headers=1 -bsf:v dump_extra " +
             $"-profile:v high -level 4.1 -pix_fmt yuv420p " +
             $"-g 60 -keyint_min 60 -sc_threshold 0 " +
             $"-b:v 4000k -maxrate 6000k -bufsize 8000k " +
