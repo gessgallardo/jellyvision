@@ -6,7 +6,7 @@ to work.
 
 Status: **working end to end.** Installed on a live Jellyfin 10.11.9 server,
 added as an M3U tuner with an XMLTV guide, and verified playing back through
-Jellyfin's own Live TV pipeline at realtime. 29 tests.
+Jellyfin's own Live TV pipeline at realtime. 75 automated tests.
 
 ## Install
 
@@ -61,7 +61,7 @@ ScheduleEngine  ---> ProgramSlot (item + start + end + seek offset)
       |
       +--> REST API            (done)
       +--> Web client / JS     (planned)
-      +--> M3U + XMLTV + ffmpeg tuner (planned)
+      +--> M3U + XMLTV + ffmpeg tuner (done)
 ```
 
 ### Scheduling modes
@@ -109,15 +109,10 @@ Targets Jellyfin ABI 10.11.0.0 / net9.0.
 
 ## Releasing
 
-`scripts/package.py` builds Release, zips the dll, computes the MD5 the
-manifest requires, and updates `manifest.json`:
-
-```bash
-python3 scripts/package.py --version 0.1.3.0 \
-  --base-url https://github.com/gessgallardo/jellyvision/releases/download/v0.1.3.0
-git commit -am "..." && git push
-gh release create v0.1.3.0 dist/jellyvision_0.1.3.0.zip
-```
+Merging to `main` triggers `.github/workflows/release.yaml`. The workflow
+restores and tests the solution, increments the patch component, packages the
+Release plugin, validates the archive and manifest, then creates the GitHub
+release. `scripts/package.py` remains available for local package experiments.
 
 ## Hard-won constraints
 
@@ -152,11 +147,11 @@ pinned by tests:
 2. ~~REST API~~
 3. ~~Plugin repository packaging + install on a live server~~
 4. ~~Live TV tuner: M3U + XMLTV + MPEG-TS streaming~~
-5. Channel editor UI in the plugin config page (pick series/movies/collections).
-   Channels are currently created by POSTing the plugin configuration.
-6. Stream sharing: one ffmpeg per channel rather than per client.
-7. Channel logos in the playlist and guide.
-8. Filler: bumpers, idents, fake commercials between programmes.
+5. ~~Channel editor UI in the plugin config page~~ (pick series, movies,
+   collections, playlists and filters).
+6. ~~Stream sharing: one ffmpeg per channel rather than per client.~~
+7. ~~Channel logos in the playlist and guide.~~
+8. ~~Filler: bumpers, idents, fake commercials between programmes.~~
 9. Dayparting: different sources by time of day.
 
 See `docs/DESIGN.md` for the full trade-off notes.
