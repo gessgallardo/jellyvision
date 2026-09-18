@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.7.0.3",
+        "changelog": "Merge pull request #5 from gessgallardo/test/production-hardening\n\ndocs: update shipped features and release workflow",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.7.0.3/jellyvision_0.7.0.3.zip",
+        "checksum": "f3bf6732a5f4339fa74fb03d19395c8a",
+        "timestamp": "2026-09-18T23:30:06Z"
+      },
+      {
         "version": "0.7.0.2",
         "changelog": "Merge pull request #4 from gessgallardo/fix/filler-scheduling-confidence\n\nfix: keep filler between programmes in every schedule mode",
         "targetAbi": "10.11.0.0",
