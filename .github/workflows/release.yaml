@@ -1,0 +1,109 @@
+name: Release plugin
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Release commits contain [skip ci], so they do not start another release.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.JellyVision.slnx
+
+      - name: Test
+        run: dotnet test tests/Jellyfin.Plugin.JellyVision.Tests -c Release --no-restore
+
+      - name: Calculate next version
+        id: version
+        shell: python
+        run: |
+          import json
+          import os
+
+          with open("manifest.json", encoding="utf-8") as handle:
+              latest = json.load(handle)[0]["versions"][0]["version"]
+
+          parts = latest.split(".")
+          if len(parts) != 4 or not all(part.isdigit() for part in parts):
+              raise SystemExit(f"Invalid current plugin version: {latest}")
+
+          parts[-1] = str(int(parts[-1]) + 1)
+          version = ".".join(parts)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+
+      - name: Package plugin and update manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CHANGELOG: ${{ github.event.head_commit.message }}
+        run: >-
+          python scripts/package.py
+          --version "$VERSION"
+          --base-url "https://github.com/${{ github.repository }}/releases/download/v$VERSION"
+          --changelog "$CHANGELOG"
+
+      - name: Validate package contents
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python - <<'PY'
+          import json
+          import zipfile
+          import os
+
+          version = os.environ["VERSION"]
+          zip_path = f"dist/jellyvision_{version}.zip"
+          with zipfile.ZipFile(zip_path) as archive:
+              names = archive.namelist()
+          assert names == ["Jellyfin.Plugin.JellyVision.dll"], names
+
+          with open("manifest.json", encoding="utf-8") as handle:
+              entry = json.load(handle)[0]["versions"][0]
+          assert entry["version"] == version
+          assert entry["sourceUrl"].endswith(f"/jellyvision_{version}.zip")
+          assert entry["checksum"]
+          PY
+
+      - name: Commit generated manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "release: JellyVision $VERSION [skip ci]"
+          git push origin HEAD:main
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          CHANGELOG: ${{ github.event.head_commit.message }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" \
+            "dist/jellyvision_$VERSION.zip" \
+            --title "JellyVision $VERSION" \
+            --notes "$CHANGELOG"
