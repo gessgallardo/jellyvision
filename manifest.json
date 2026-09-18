@@ -8,6 +8,14 @@
     "category": "Live TV",
     "versions": [
       {
+        "version": "0.7.0.1",
+        "changelog": "Merge pull request #3 from gessgallardo/fix/live-tv-guide-continuity\n\nci: publish JellyVision releases after merges",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/gessgallardo/jellyvision/releases/download/v0.7.0.1/jellyvision_0.7.0.1.zip",
+        "checksum": "75919bd94144db1eb71f56a4c3801d06",
+        "timestamp": "2026-09-18T22:16:13Z"
+      },
+      {
         "version": "0.7.0.0",
         "changelog": "Filler: bumpers and idents between programmes, hidden from the guide.",
         "targetAbi": "10.11.0.0",
