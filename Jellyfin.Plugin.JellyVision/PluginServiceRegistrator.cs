@@ -2,6 +2,7 @@ using Jellyfin.Plugin.JellyVision.LiveTv;
 using Jellyfin.Plugin.JellyVision.Scheduling;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
+using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Plugin.JellyVision;
@@ -18,5 +19,6 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<ChannelTimeline>();
         serviceCollection.AddSingleton<ChannelStreamer>();
         serviceCollection.AddSingleton<ChannelSessionManager>();
+        serviceCollection.AddSingleton<IScheduledTask, GuideRefreshTask>();
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Text;
+
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.JellyVision.Configuration;
@@ -165,8 +165,7 @@ public class ChannelStreamer
         TimeSpan joinOffset,
         ref TimeSpan duration)
     {
-        var sb = new StringBuilder();
-        var any = false;
+        var entries = new List<(string Path, TimeSpan Duration, TimeSpan Inpoint)>(take);
 
         for (var i = 0; i < take; i++)
         {
@@ -177,27 +176,18 @@ public class ChannelStreamer
                 continue;
             }
 
-            // ffconcat quoting: single quotes, with embedded quotes escaped.
-            var escaped = path.Replace("'", @"'\''", StringComparison.Ordinal);
-            sb.Append(CultureInfo.InvariantCulture, $"file '{escaped}'\n");
-
-            var itemDuration = slot.Item.Duration;
-            if (i == 0 && joinOffset > TimeSpan.Zero && joinOffset < itemDuration)
-            {
-                sb.Append(CultureInfo.InvariantCulture, $"inpoint {joinOffset.TotalSeconds:F3}\n");
-                itemDuration -= joinOffset;
-            }
-
-            duration += itemDuration;
-            any = true;
+            entries.Add((path, slot.Item.Duration, i == 0 ? joinOffset : TimeSpan.Zero));
         }
 
-        if (any)
+        var result = ConcatListBuilder.Build(entries);
+        if (result.Duration > TimeSpan.Zero)
         {
-            File.WriteAllText(listPath, sb.ToString());
+            File.WriteAllText(listPath, result.Text);
+            duration = result.Duration;
+            return true;
         }
 
-        return any;
+        return false;
     }
 
     private string? ResolvePath(string itemId)
