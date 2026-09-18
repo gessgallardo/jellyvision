@@ -84,6 +84,8 @@ public class IptvController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult GetPlaylist()
     {
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+
         // Borrow each channel's current programme artwork as its logo.
         var logos = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var channel in Config.Channels.Where(c => c.Enabled))
@@ -110,6 +112,8 @@ public class IptvController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public ActionResult GetGuide([FromQuery] int? hours)
     {
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+
         var window = TimeSpan.FromHours(Math.Clamp(hours ?? Config.GuideHours, 1, 168));
         var nowUtc = DateTime.UtcNow;
 
