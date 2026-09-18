@@ -72,10 +72,14 @@ engine is the interesting part and is independent of the delivery.
   `IApplicationPaths.PluginConfigurationsPath`. Config XML gets ugly fast
   for many channels — prefer our own JSON store.
 
-## Open questions
+## Current decisions and next direction
 
-1. Wall-clock live (you tune in mid-episode, it's already running) vs.
-   always-start-at-the-beginning queue?
-2. Delivery: Live TV tuner, injected JS, or engine-first/hybrid?
-3. Channel definition: hand-picked items vs. auto from genre/tag filters?
-4. Deployment for testing: docker? bare metal? which Jellyfin version?
+1. Wall-clock live is configurable per channel; the default joins the item
+   already in progress, matching cable behaviour.
+2. The Live TV tuner is the current delivery surface. The deterministic engine
+   remains exposed through REST so a future web client can use the same timeline.
+3. Channels support hand-picked series, movies, collections and playlists, plus
+   genre/tag filters. Filler has its own source pool and does not appear in the
+   guide.
+4. The next scheduling feature is dayparting: selecting different source pools
+   by time of day without breaking the deterministic anchor-based timeline.
