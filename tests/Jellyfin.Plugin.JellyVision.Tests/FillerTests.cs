@@ -84,6 +84,65 @@ public class FillerTests
         Assert.Equal(TimeSpan.Zero, offset);
     }
 
+    [Theory]
+    [InlineData(ScheduleMode.Sequential)]
+    [InlineData(ScheduleMode.Shuffle)]
+    [InlineData(ScheduleMode.BlockShuffle)]
+    [InlineData(ScheduleMode.RoundRobin)]
+    public void FilledSchedule_KeepsBreaksBetweenProgrammesForEveryMode(ScheduleMode mode)
+    {
+        var combined = ScheduleEngine.Interleave(Programmes(), Bumpers(), 1);
+        var cycle = TimeSpan.FromTicks(combined.Sum(i => i.Duration.Ticks));
+        var guide = ScheduleEngine.GetGuide(combined, mode, Anchor, Anchor, cycle, 1);
+
+        for (var i = 1; i < guide.Count; i++)
+        {
+            Assert.False(
+                guide[i - 1].Item.IsFiller && guide[i].Item.IsFiller,
+                $"adjacent fillers at {i - 1} and {i}: {guide[i - 1].Item.ItemId}, {guide[i].Item.ItemId}");
+        }
+    }
+
+    [Fact]
+    public void FilledSchedule_RotatesTheLeadingBumperAcrossCycles()
+    {
+        var combined = ScheduleEngine.Interleave(Programmes(), Bumpers(), 1);
+        var cycle = TimeSpan.FromTicks(combined.Sum(i => i.Duration.Ticks));
+        var firstFillerByCycle = Enumerable.Range(0, 2)
+            .Select(c => ScheduleEngine.GetGuide(
+                combined,
+                ScheduleMode.Sequential,
+                Anchor,
+                Anchor + (cycle * c),
+                cycle,
+                1)
+                .First(slot => slot.Item.IsFiller)
+                .Item.ItemId)
+            .ToList();
+
+        Assert.NotEqual(firstFillerByCycle[0], firstFillerByCycle[1]);
+    }
+
+    [Fact]
+    public void FilledSchedule_PreservesAnUnevenFillerPool()
+    {
+        IReadOnlyList<ScheduleItem> combined =
+        [
+            .. Programmes(),
+            .. Bumpers(),
+            new("b3", "Bumper 3", TimeSpan.FromMinutes(1), "f", "f", null, true),
+        ];
+        var cycle = TimeSpan.FromTicks(combined.Sum(i => i.Duration.Ticks));
+        var guide = ScheduleEngine.GetGuide(
+            combined, ScheduleMode.BlockShuffle, Anchor, Anchor, cycle, 1);
+
+        Assert.Equal(combined.Count, guide.Count);
+        Assert.Equal(cycle, guide[^1].EndUtc - guide[0].StartUtc);
+        Assert.Equal(
+            3,
+            guide.Count(slot => slot.Item.IsFiller));
+    }
+
     [Fact]
     public void Guide_HidesFillerAndStaysContiguous()
     {

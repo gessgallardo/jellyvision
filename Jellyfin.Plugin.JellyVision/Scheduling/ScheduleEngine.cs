@@ -235,6 +235,56 @@ public static class ScheduleEngine
             }
         }
 
+        var programmes = new List<ScheduleItem>(playable.Count);
+        var filler = new List<ScheduleItem>();
+        foreach (var item in playable)
+        {
+            (item.IsFiller ? filler : programmes).Add(item);
+        }
+
+        if (filler.Count == 0 || programmes.Count < 2)
+        {
+            return OrderProgrammes(playable, mode, seed, cycleIndex);
+        }
+
+        var orderedProgrammes = OrderProgrammes(programmes, mode, seed, cycleIndex);
+        var gapCount = programmes.Count - 1;
+        var baseCount = filler.Count / gapCount;
+        var extraCount = filler.Count % gapCount;
+
+        // Interleave() creates a fixed number of breaks between each pair of
+        // programmes. Rebuild that shape after ordering the programmes so a
+        // shuffle or block shuffle cannot group all fillers together. The
+        // remainder handling also preserves callers that provide a manually
+        // assembled, uneven filler layout.
+        var result = new List<ScheduleItem>(playable.Count);
+        var fillerStart = (int)(cycleIndex % filler.Count);
+        var fillerIndex = 0;
+        for (var i = 0; i < orderedProgrammes.Count; i++)
+        {
+            result.Add(orderedProgrammes[i]);
+            if (i == orderedProgrammes.Count - 1)
+            {
+                break;
+            }
+
+            var fillersInGap = baseCount + (i < extraCount ? 1 : 0);
+            for (var f = 0; f < fillersInGap; f++)
+            {
+                result.Add(filler[(fillerStart + fillerIndex) % filler.Count]);
+                fillerIndex++;
+            }
+        }
+
+        return result;
+    }
+
+    private static List<ScheduleItem> OrderProgrammes(
+        List<ScheduleItem> playable,
+        ScheduleMode mode,
+        int seed,
+        long cycleIndex)
+    {
         switch (mode)
         {
             case ScheduleMode.Shuffle:

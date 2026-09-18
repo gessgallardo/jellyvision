@@ -198,7 +198,7 @@ public class BroadcasterTests
     }
 
     [Fact]
-    public void PublishCopiesTheBuffer_SoReuseCannotCorruptQueuedData()
+    public async Task PublishCopiesTheBuffer_SoReuseCannotCorruptQueuedData()
     {
         // The encoder reuses its read buffer, so the broadcaster must not keep
         // a reference to it.
@@ -211,7 +211,7 @@ public class BroadcasterTests
         buffer[0] = 99;
         broadcaster.Complete();
 
-        var received = subscriber.ReadAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var received = await subscriber.ReadAsync(CancellationToken.None);
         Assert.Equal([1, 2, 3], received);
     }
 }
