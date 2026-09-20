@@ -25,6 +25,9 @@ jobs:
       - name: Build plugin (warnings are errors)
         run: dotnet build Jellyfin.Plugin.JellyVision/Jellyfin.Plugin.JellyVision.csproj -c Release --no-restore
 
+      - name: Install ffmpeg for Live TV continuity test
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Test
         run: dotnet test tests/Jellyfin.Plugin.JellyVision.Tests -c Release --no-restore
 
